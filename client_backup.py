@@ -36,6 +36,7 @@ def main():
         sys.exit(EXIT_UNKNOWN)
 
 # Need to add a check of the path to see that it is valid
+# Need to add a check to see if there is enough available space in volume group for snapshot
 def createLvmSnapshot(lvm_path):
     subprocess.run(['lvcreate', '-L512MB', '-s', '-n' 'snap', lvm_path])
     subprocess.run(['mount','/dev/centos/snap','/mnt/snap'])
