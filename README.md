@@ -1,5 +1,6 @@
 # rsync-project
-Linux backup system utilizing rsync, LVM, and ZFS. The backup scripts are written in Python 3.6 and tested on Centos7
+Linux backup system utilizing rsync, LVM, and ZFS. The backup scripts are written in Python 3.6.7 and tested on Centos7.  
+Will be tested on RHEL 6 and 7 for clients. Testing other OSes for the server is not currently planned.
 
 ## Dependencies:
 
