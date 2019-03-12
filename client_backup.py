@@ -12,7 +12,8 @@ def main():
                 print("Run cleanup")
                 # Call up cleaning function
             else:
-                subprocess.run(['thouch', '/etc/zfsync/lock'])
+                # Add a fail if creating lock file fails\
+                subprocess.run(['touch', '/etc/zfsync/lock'])
                 createLvmSnapshot("/dev/centos/root")
                 print("LVM snapshot successfully created")
                 sys.exit(EXIT_OK)
