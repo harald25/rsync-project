@@ -1,10 +1,13 @@
 #! /usr/bin/env python3.6
 
 import subprocess
+import sys
 
 def main():
-    createLvmSnapshot("/dev/centos/root")
-    deleteLvmSnapshot("/dev/centos/snap")
+    print("Hello World!")
+    sys.exit(0)
+    #createLvmSnapshot("/dev/centos/root")
+    #deleteLvmSnapshot("/dev/centos/snap")
 
 # Need to add a check of the path to see that it is valid
 def createLvmSnapshot(lvm_path):
