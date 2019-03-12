@@ -1,8 +1,7 @@
 #! /usr/bin/env python3.6
 
+import subprocess, os.path, paramiko
 from datetime import datetime
-import subprocess
-import os.path
 from paramiko import SSHClient
 
 def main():
