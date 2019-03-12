@@ -7,7 +7,7 @@ def main():
 
 
 def createClone(main_dataset_name, sub_dataset_name, backup_type):
-    time_now = datetime.datetime.today().strftime('%Y-%m-%d--%H-%M-%S')
+    time_now = datetime.today().strftime('%Y-%m-%d--%H-%M-%S')
     #Take snapshot
     subprocess.run("zfs", "snapshot", main_dataset_name +"@" + time_now)
     #Make clone
