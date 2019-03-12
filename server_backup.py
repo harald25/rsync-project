@@ -1,7 +1,7 @@
 #! /usr/bin/env python3.6
 
 def main():
-    print("Hello World!")
+    createClone("backup/backup-ipsec/","5_inc","incremental")
 
 
 def createClone(main_dataset_name, sub_dataset_name, backup_type):
