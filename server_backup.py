@@ -10,9 +10,9 @@ def main():
 def createClone(main_dataset_name, sub_dataset_name, backup_type):
     time_now = datetime.today().strftime('%Y-%m-%d--%H-%M-%S')
     #Take snapshot
-    subprocess.run(['zfs', 'snapshot', main_dataset_name +'/@' + time_now])
+    subprocess.run(['zfs', 'snapshot', main_dataset_name + '/' + sub_dataset_name +'@' + time_now])
     #Make clone
-    subprocess.run(['zfs', 'clone', main_dataset_name +'/@' + time_now, main_dataset_name + '_' + backup_type + '_' + time_now ])
+    subprocess.run(['zfs', 'clone', main_dataset_name + '/' + sub_dataset_name +'@' + time_now, main_dataset_name + '/' + backup_type + '_' + time_now ])
 
 def readSchedule():
     print("Schedule")
