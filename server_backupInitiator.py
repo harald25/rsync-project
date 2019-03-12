@@ -2,12 +2,16 @@
 
 from datetime import datetime
 import subprocess
+import os.path
+
+central_config_file_path = "/etc/zfsync/zfsync.cfg"
+machines_with_jobs = "/etc/zfsync/machines.cfg"
 
 def main():
-    readSchedule()
+    checkSchedule()
 
-def readSchedule():
-    print("Schedule")
+def checkSchedule():
+    # Open
 
 def checkLockFile1():
     print("Lock 1")
