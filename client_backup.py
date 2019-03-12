@@ -31,7 +31,7 @@ def main():
             print("Parameter provided to the script was not accepted")
             sys.exit(EXIT_UNKNOWN)
 
-    if:
+    else:
         print("Wrong number of arguments. There should only be one. Accepted arguments are \"--initiate_backup\", \"--cleanup\", and \"--end_backup\" ")
         sys.exit(EXIT_UNKNOWN)
 
