@@ -6,7 +6,7 @@ from pathlib import Path
 
 def main():
     if len(sys.argv) is 2:
-        if sys.argv[1] is "--initiate_backup":
+        if sys.argv[1] == "--initiate_backup":
             message, lock_exists = checkLockFile()
             if lock_exists:
                 print("Run cleanup")
@@ -17,13 +17,13 @@ def main():
                 print("LVM snapshot successfully created")
                 sys.exit(EXIT_OK)
 
-        elif sys.argv[1] is "--end_backup":
+        elif sys.argv[1] == "--end_backup":
             deleteLvmSnapshot("/dev/centos/snap")
             subprocess.run(['rm', '-rf', '/etc/zfsync/lock'])
             print("LVM snapshot successfully deleted")
             sys.exit(EXIT_OK)
 
-        elif sys.argv[1] is "--cleanup":
+        elif sys.argv[1] == "--cleanup":
             print("Cleaning is not implemented yet")
             sys.exit(EXIT_OK)
 
@@ -32,7 +32,7 @@ def main():
             sys.exit(EXIT_UNKNOWN)
 
     else:
-        print("Wrong number of arguments. There should only be one. Accepted arguments are \"--initiate_backup\", \"--cleanup\", and \"--end_backup\" ")
+        print("Wrong number of arguments. There should be exactly one argument. Accepted arguments are \"--initiate_backup\", \"--cleanup\", and \"--end_backup\" ")
         sys.exit(EXIT_UNKNOWN)
 
 # Need to add a check of the path to see that it is valid
