@@ -23,7 +23,7 @@ def initiateClient(client, username):
     ssh.load_system_host_keys()
     ssh.connect(client, username = username)
     (ssh_stdin, ssh_stdout, ssh_stderr) = ssh.exec_command('/root/zfsync_test/rsync-project/client_backup.py')
-    print(ssh_stdout.readlines)
+    print(ssh_stdout.readlines())
     ssh.close()
 
 
