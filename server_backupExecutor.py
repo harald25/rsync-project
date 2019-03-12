@@ -8,6 +8,7 @@ def main():
 
     #createClone("backup/backup-ipsec","5_inc","incremental")
     initiateClient("backup-ipsec", "root")
+    sys.exit(0)
 
 
 def createClone(main_dataset_name, sub_dataset_name, backup_type):
@@ -19,11 +20,11 @@ def createClone(main_dataset_name, sub_dataset_name, backup_type):
 
 def initiateClient(client, username):
     ssh = SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.client.AutoAddPolicy())
     ssh.load_system_host_keys()
-    ssh.connect(username + '@' + client + '/root/zfsync_test/rsync-project')
-    ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command('./client_backup.py')
-    print(ssh_stdout)
+    ssh.connect(client, username = username)
+    (ssh_stdin, ssh_stdout, ssh_stderr) = ssh.exec_command('/root/zfsync_test/rsync-project/client_backup.py')
+    print(ssh_stdout.readlines)
+    ssh.close()
 
 
 if __name__ == "__main__":
