@@ -11,11 +11,10 @@ def main():
             if lock_exists:
                 print("Client lock file is already present. Exiting!")
             else:
-                # Add a fail if creating lock file fails
                 proc = subprocess.run(['touch', '/etc/zfsync/lock'], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 if proc.returncode:
                     print(proc.stderr)
-                    sys.exit(EXIT_UNKNOWN)
+                    sys.exit(EXIT_WARNING)
                 else:
                     print(proc.stdout)
                     createLvmSnapshot("/dev/centos/root")
@@ -24,9 +23,14 @@ def main():
 
         elif sys.argv[1] == "--end-backup":
             deleteLvmSnapshot("/dev/centos/snap")
-            subprocess.run(['rm', '-rf', '/etc/zfsync/lock'])
-            print("LVM snapshot successfully deleted")
-            sys.exit(EXIT_OK)
+            proc = subprocess.run(['rm', '-f', '/etc/zfsync/lock'], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if proc.returncode:
+                print(proc.stderr)
+                sys.exit(EXIT_UNKNOWN)
+            else:
+                print(proc.stdout)
+                print("LVM snapshot successfully deleted")
+                sys.exit(EXIT_OK)
 
         elif sys.argv[1] == "--cleanup":
             print("Cleaning is not implemented yet")
@@ -43,13 +47,35 @@ def main():
 # Need to add a check of the path to see that it is valid
 # Need to add a check to see if there is enough available space in volume group for snapshot
 def createLvmSnapshot(lvm_path):
-    subprocess.run(['lvcreate', '-L512MB', '-s', '-n' 'snap', lvm_path])
-    subprocess.run(['mount','/dev/centos/snap','/mnt/snap'])
+    proc = subprocess.run(['lvcreate', '-L512MB', '-s', '-n' 'snap', lvm_path], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if proc.returncode:
+        print(proc.stderr)
+        sys.exit(EXIT_CRITICAL)
+    else:
+        print(proc.stdout)
+
+    proc = subprocess.run(['mount','/dev/centos/snap','/mnt/snap'], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if proc.returncode:
+        print(proc.stderr)
+        sys.exit(EXIT_CRITICAL)
+    else:
+        print(proc.stdout)
 
 # Need to add a check of the path to see that it is valid
 def deleteLvmSnapshot(snapshot_path):
-    subprocess.run(['umount', '/mnt/snap'])
-    subprocess.run(['lvremove', '-y', snapshot_path])
+    proc = subprocess.run(['umount', '/mnt/snap'], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if proc.returncode:
+        print(proc.stderr)
+        sys.exit(EXIT_CRITICAL)
+    else:
+        print(proc.stdout)
+
+    proc = subprocess.run(['lvremove', '-y', snapshot_path], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if proc.returncode:
+        print(proc.stderr)
+        sys.exit(EXIT_CRITICAL)
+    else:
+        print(proc.stdout)
 
 def checkLockFile():
     lockfile = Path("/etc/zfsync/lock")
@@ -60,6 +86,7 @@ def checkLockFile():
         message = "Lock file does not exist. Ready for backup!"
         lock_exists = False
     return (message, lock_exists)
+
 
 if __name__ == "__main__":
     main()
