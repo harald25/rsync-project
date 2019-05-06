@@ -70,7 +70,7 @@ def deleteLvmSnapshot(snapshot_path):
         print(proc.stdout)
 
 def deleteLockfile(file_name):
-    proc = subprocess.run(['rm', '-f', '/etc/zfsync/',file_name], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.run(['rm', '-f', '/etc/zfsync/'+file_name], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if proc.returncode:
         print(proc.stderr)
         sys.exit(EXIT_UNKNOWN)
@@ -78,7 +78,7 @@ def deleteLockfile(file_name):
         print("Lock file deleted")
 
 def createLockfile(file_name):
-    proc = subprocess.run(['touch', '/etc/zfsync/',file_name], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.run(['touch', '/etc/zfsync/'+file_name], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if proc.returncode:
         print(proc.stderr)
         sys.exit(EXIT_WARNING)
