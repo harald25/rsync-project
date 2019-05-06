@@ -1,0 +1,6 @@
+# Describes the retention period separately for full and incremental backup types. Retention period for incremental can not be higher than for full
+# Each backup-set should be separated by a newline. Each parameter should be separated by a blank space
+
+# Path retention-full retention-incremental
+/storage/backup-ipsec_schedule1 60 14
+/storage/backup-ipsec_schedule2 120 7

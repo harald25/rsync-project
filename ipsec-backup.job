@@ -1,0 +1,10 @@
+##### Config file for backup TestBackup (ID: 1234)
+##### Multiple schedules can be defined - schedule is defined in "cron style"
+
+# min hour  day_month month day_week diff_every full_every  backup_folder
+00  01  * * * 7 8  /storage/backup-ipsec_schedule1     # Will run at 01:00 every day of the month, every month, every day of the week.
+                                                        # Will do a differential backup every 7th run, and a full backup  every 14th run
+
+00 */4 * * * 6 42  /storage/backup-ipsec_schedule_2     # Will run every fourth hour, every day
+                                                        # Will do a differential backup every 6th run (once a day),
+                                                          and a full backup every 42nd run (once a week)

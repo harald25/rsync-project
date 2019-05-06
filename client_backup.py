@@ -31,8 +31,12 @@ def main():
                 sys.exit(EXIT_OK)
 
         elif sys.argv[1] == "--cleanup":
-            print("Cleaning is not implemented yet")
-            sys.exit(EXIT_OK)
+            if checkLockFile():
+                print("Client lock file is present. Backup is already running, or the last backup crashed.")
+                sys.exit(EXIT_WARNING)
+            else:
+                deleteLvmSnapshot("/dev/centos/snap")
+                sys.exit(EXIT_OK)
 
         else:
             print("Parameter provided to the script was not accepted")

@@ -6,12 +6,19 @@ from paramiko import SSHClient
 
 def main():
 
+    # Parameters:
+    #   - Client (hostname of client),
+    #   - Dataset path (path to the root folder of where the backupjob is stored)
+    #   - Backup type (Full, differential, incremental)
+
+    # Check status of last run
+        # If last run failed, do cleanup
     # Check for presence of lock file
     #createClone("backup/backup-ipsec","5_inc","incremental")
     (stdout, stderr, exit_code) = initiateClient("backup-ipsec", "root")
     # Rsync files
     # End backup at client
-    
+
     if stdout:
         print(stdout)
     if stderr:
@@ -19,12 +26,12 @@ def main():
     sys.exit(exit_code)
 
 
-def createClone(main_dataset_name, sub_dataset_name, backup_type):
+def createClone(dataset_name, backup_type):
     time_now = datetime.today().strftime('%Y-%m-%d--%H-%M-%S')
     #Take snapshot
-    subprocess.run(['zfs', 'snapshot', main_dataset_name + '/' + sub_dataset_name +'@' + time_now])
+    subprocess.run(['zfs', 'snapshot', dataset_name +'@' + time_now])
     #Make clone
-    subprocess.run(['zfs', 'clone', main_dataset_name + '/' + sub_dataset_name +'@' + time_now, main_dataset_name + '/' + backup_type + '_' + time_now ])
+    subprocess.run(['zfs', 'clone', dataset_name +'@' + time_now, dataset_name + '/' + backup_type + '_' + time_now ])
 
 def initiateClient(client, username):
     ssh = SSHClient()
