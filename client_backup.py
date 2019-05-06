@@ -7,7 +7,7 @@ from pathlib import Path
 def main():
     if len(sys.argv) is 2:
         if sys.argv[1] == "--initiate-backup":
-            if checkLockFile():
+            if checkLockFile("lock"):
                 print("Client lock file is already present. Exiting!")
                 sys.exit(EXIT_WARNING)
             else:
