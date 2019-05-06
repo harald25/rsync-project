@@ -9,14 +9,16 @@ def main():
         if sys.argv[1] == "--initiate-backup":
             message, lock_exists = checkLockFile()
             if lock_exists:
-                print("Run cleanup")
-                # Call up cleaning function
+                print("Lock file is present. Exiting")
             else:
                 # Add a fail if creating lock file fails
-                subprocess.run(['touch', '/etc/zfsync/lock'])
-                createLvmSnapshot("/dev/centos/root")
-                print("LVM snapshot successfully created")
-                sys.exit(EXIT_OK)
+                if subprocess.run(['touch', '/etc/zfsync/lock']):
+                    createLvmSnapshot("/dev/centos/root")
+                    print("LVM snapshot successfully created")
+                    sys.exit(EXIT_OK)
+                else:
+                    print("Failed to create lock file")
+                    sys.exit(EXIT_UNKNOWN)
 
         elif sys.argv[1] == "--end-backup":
             deleteLvmSnapshot("/dev/centos/snap")

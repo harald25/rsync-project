@@ -12,3 +12,9 @@ Will be tested on RHEL 6 and 7 for clients. Testing other OSes for the server is
 ###### Server dependencies
 
     /usr/bin/pip3.6 install paramiko
+
+## Preparations:
+SSH keys must be generated on backup server and copied to clients
+
+    ssh-keygen
+    ssh-copy-id root@clientmachine
