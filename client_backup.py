@@ -18,7 +18,6 @@ def main():
                 else:
                     print(proc.stdout)
                     createLvmSnapshot("/dev/centos/root")
-                    print("LVM snapshot successfully created")
                     sys.exit(EXIT_OK)
 
         elif sys.argv[1] == "--end-backup":
@@ -29,7 +28,6 @@ def main():
                 sys.exit(EXIT_UNKNOWN)
             else:
                 print(proc.stdout)
-                print("LVM snapshot successfully deleted")
                 sys.exit(EXIT_OK)
 
         elif sys.argv[1] == "--cleanup":
@@ -60,6 +58,7 @@ def createLvmSnapshot(lvm_path):
         sys.exit(EXIT_CRITICAL)
     else:
         print(proc.stdout)
+        print("Snapshot mounted successfully!")
 
 # Need to add a check of the path to see that it is valid
 def deleteLvmSnapshot(snapshot_path):
@@ -69,6 +68,7 @@ def deleteLvmSnapshot(snapshot_path):
         sys.exit(EXIT_CRITICAL)
     else:
         print(proc.stdout)
+        print("Snapshot unmounted successfully!")
 
     proc = subprocess.run(['lvremove', '-y', snapshot_path], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if proc.returncode:
