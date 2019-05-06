@@ -7,43 +7,31 @@ from pathlib import Path
 def main():
     if len(sys.argv) is 2:
         if sys.argv[1] == "--initiate-backup":
-            message, lock_exists = checkLockFile()
-            if lock_exists:
-                print("Client lock file is already present. Exiting!")
-            else:
-                proc = subprocess.run(['touch', '/etc/zfsync/lock'], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                if proc.returncode:
-                    print(proc.stderr)
-                    sys.exit(EXIT_WARNING)
-                else:
-                    print(proc.stdout)
-                    createLvmSnapshot("/dev/centos/root")
-                    sys.exit(EXIT_OK)
-
-        elif sys.argv[1] == "--end-backup":
-            deleteLvmSnapshot("/dev/centos/snap")
-            proc = subprocess.run(['rm', '-f', '/etc/zfsync/lock'], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            if proc.returncode:
-                print(proc.stderr)
-                sys.exit(EXIT_UNKNOWN)
-            else:
-                print(proc.stdout)
-                sys.exit(EXIT_OK)
-
-        elif sys.argv[1] == "--cleanup":
             if checkLockFile():
-                print("Client lock file is present. Backup is already running, or the last backup crashed.")
+                print("Client lock file is already present. Exiting!")
                 sys.exit(EXIT_WARNING)
             else:
+                createLockfile("lock")
+                createLvmSnapshot(lvm_path)
+                deleteLockfile("lock")
+                sys.exit(EXIT_OK)
+
+        elif sys.argv[1] == "--end-backup":
+            if checkLockFile():
+                print("Client lock file is already present. Exiting!")
+                sys.exit(EXIT_WARNING)
+            else:
+                createLockfile("lock")
                 deleteLvmSnapshot("/dev/centos/snap")
+                deleteLockfile("lock")
                 sys.exit(EXIT_OK)
 
         else:
-            print("Parameter provided to the script was not accepted")
+            print("Parameter provided to the script was not accepted. Accepted parameters are \"--initiate-backup\", and \"--cleanup\"")
             sys.exit(EXIT_UNKNOWN)
 
     else:
-        print("Wrong number of arguments. There should be exactly one argument. Accepted arguments are \"--initiate-backup\", \"--cleanup\", and \"--end-backup\" ")
+        print("Wrong number of arguments. There should be exactly one argument. Accepted arguments are \"--initiate-backup\", and \"--cleanup\" ")
         sys.exit(EXIT_UNKNOWN)
 
 # Need to add a check of the path to see that it is valid
@@ -81,15 +69,29 @@ def deleteLvmSnapshot(snapshot_path):
     else:
         print(proc.stdout)
 
-def checkLockFile():
-    lockfile = Path("/etc/zfsync/lock")
+def deleteLockfile(file_name):
+    proc = subprocess.run(['rm', '-f', '/etc/zfsync/',file_name], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if proc.returncode:
+        print(proc.stderr)
+        sys.exit(EXIT_UNKNOWN)
+    else:
+        print("Lock file deleted")
+
+def createLockfile(file_name):
+    proc = subprocess.run(['touch', '/etc/zfsync/',file_name], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if proc.returncode:
+        print(proc.stderr)
+        sys.exit(EXIT_WARNING)
+    else:
+        print("Lock file created")
+
+def checkLockFile(file_name):
+    lockfile = Path("/etc/zfsync/" + file_name)
     if lockfile.exists():
-        message = "Lock file exists. Backup running or previous backup exited with error!"
         lock_exists = True
     else:
-        message = "Lock file does not exist. Ready for backup!"
         lock_exists = False
-    return (message, lock_exists)
+    return lock_exists
 
 
 if __name__ == "__main__":
