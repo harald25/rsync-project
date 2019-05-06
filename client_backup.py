@@ -12,7 +12,7 @@ def main():
                 sys.exit(EXIT_WARNING)
             else:
                 createLockfile("lock")
-                createLvmSnapshot(lvm_path)
+                createLvmSnapshot("/dev/centos/root")
                 deleteLockfile("lock")
                 sys.exit(EXIT_OK)
 
