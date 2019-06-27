@@ -39,8 +39,9 @@ def createDataset(root_dataset_name, backup_type):
                         The new dataset for this backup will be created here
 
     backup_type :   is either 'full', 'diff', or 'inc'
-                    If backup type is full, a new empty dataset is created under the specified root_dataset_name
-                    If backup_type = diff, a clone is made from the last successful full backup
+                    If backup type == full, a new empty dataset is created under the specified root_dataset_name
+                    If backup_type == diff, a clone is made from the last successful full backup
+                    If backup_type == 'inc' a clone from the previous successful backup is made, regardless of type
 
     """
 
@@ -120,6 +121,19 @@ def snapAndCloneDataset(dataset_name,suffix):
 
 
 def initiateClient(client, username):
+    """
+    This function initiates a backup on a client by calling 'client_backup.py' on
+    the client.
+    The function takes two parameters: client and username
+
+    Parameters
+    ----------
+    client :        Hostname or IP address of the client where we want to initiate
+                    a backup
+    username :      The username that we will use to connect to the client.
+
+    """
+
     ssh = SSHClient()
     ssh.load_system_host_keys()
     ssh.connect(client, username = username)
@@ -131,6 +145,20 @@ def initiateClient(client, username):
     return (stdout, stderr, exit_code)
 
 def endClient(client, username):
+
+    """
+    This function ends a backup on a client by calling 'client_backup.py' on
+    the client.
+    The function takes two parameters: client and username
+
+    Parameters
+    ----------
+    client :        Hostname or IP address of the client where we want to initiate
+                    a backup
+    username :      The username that we will use to connect to the client.
+
+    """
+
     ssh = SSHClient()
     ssh.load_system_host_keys()
     ssh.connect(client, username = username)
@@ -148,9 +176,9 @@ def writeToLog(level, message, root_dataset_name):
 
     Parameters
     ----------
-    level :         Verbosity level: info, warning, critical
-    message :       The message to log
-    root_dataset_name :  The name of the current dataset. Used to determine log file location
+    level :             Verbosity level: info, warning, critical
+    message :           The message to log
+    root_dataset_name : The name of the current dataset. Used to determine log file location
 
     """
     date_now = datetime.today().strftime('%Y-%m-%d')
