@@ -5,7 +5,7 @@ from pathlib import Path
 from datetime import datetime
 
 SNAPSHOT_SIZE = 512 #In megabytes
-SNAPSHOT_NAME_SUFFIX = "_rsync-snapshot_"+datetime.today().strftime('%Y-%m-%d-%H:%M:%S')
+SNAPSHOT_NAME_SUFFIX = "_rsync-snapshot_"+datetime.today().strftime('%Y-%m-%d-%H-%M-%S')
 SNAPSHOT_MOUNT_PATH = "/mnt/rsyncbackup"
 (EXIT_OK, EXIT_WARNING, EXIT_CRITICAL, EXIT_UNKNOWN) = (0,1,2,3)
 
