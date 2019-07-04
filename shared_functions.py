@@ -1,5 +1,4 @@
-from pathlib import Path
-import sys, subprocess
+import sys, subprocess, os
 
 def deleteLockfile(lock_file_path):
     """
@@ -48,9 +47,4 @@ def checkLockFile(lock_file_path):
     lock_file_path :     The path of the lock file to be checked
 
     """
-    lockfile = Path(lock_file_path)
-    if lockfile.exists():
-        lock_exists = True
-    else:
-        lock_exists = False
-    return lock_exists
+    return os.path.isfile(lock_file_path)
