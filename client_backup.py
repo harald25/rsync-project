@@ -7,14 +7,15 @@ from datetime import datetime
 SNAPSHOT_SIZE = 512 #In megabytes
 #This name must be provided by the backupserver, so that it is the same
 #both when initializing and ending the backup.
-SNAPSHOT_MOUNT_PATH = "/mnt/rsyncbackup"
+SNAPSHOT_MOUNT_PATH = "/mnt/rsyncbackup"#DONT use a trailing slash
+LOCK_FILE_PATH = "/etc/zfsync" #DONT use a trailing slash
 LOCK_FILE_NAME = "lock"
 (EXIT_OK, EXIT_WARNING, EXIT_CRITICAL, EXIT_UNKNOWN) = (0,1,2,3)
 
 arg_parser = argparse.ArgumentParser(description='Client side script for initializing and ending backups.')
-arg_parser.add_argument("action", choices=['initiate-backup', 'end-backup'], help="Specify weather to initiate or end backup",group="Action")
-arg_parser.add_argument('-l','--lv-path', help='Path to the logical volume', required=True, group="Required arguments")
-arg_parser.add_argument('-s','--snap-suffix', help='The name suffix of snaphot to be created (if initiating), or deleted (if ending)', required=True, group="Required arguments")
+arg_parser.add_argument("action", choices=['initiate-backup', 'end-backup'], help="Specify weather to initiate or end backup")
+arg_parser.add_argument('-l','--lv-path', help='Path to the logical volume', required=True)
+arg_parser.add_argument('-s','--snap-suffix', help='The name suffix of snaphot to be created (if initiating), or deleted (if ending)', required=True)
 arguments = arg_parser.parse_args()
 
 def main():
@@ -128,7 +129,7 @@ def deleteLvmSnapshot(lvm_path,snap_suffix):
     vg_name = lvm_path.split("/")[2]
     lv_name = lvm_path.split("/")[3]
 
-    proc = subprocess.run(['umount', '/mnt/snap'], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.run(['umount', SNAPSHOT_MOUNT_PATH+"/"+lv_name+snap_suffix], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if proc.returncode:
         print(proc.stderr)
         sys.exit(EXIT_CRITICAL)
@@ -136,15 +137,27 @@ def deleteLvmSnapshot(lvm_path,snap_suffix):
         print(proc.stdout)
         print("Snapshot unmounted successfully!")
 
-    proc = subprocess.run(['lvremove', '-y', snapshot_path], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.run(['lvremove', '-y', snapshot_path+snap_suffix], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if proc.returncode:
         print(proc.stderr)
         sys.exit(EXIT_CRITICAL)
     else:
         print(proc.stdout)
 
+
 def deleteLockfile(file_name):
-    proc = subprocess.run(['rm', '-f', '/etc/zfsync/'+file_name], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    """
+    This function deletes a lock file to mark that a backup job process is
+    no longer running.
+    The function takes one parameter: file_name
+
+    Parameters
+    ----------
+    file_name :     The file name of the lock file to be deleted
+
+    """
+
+    proc = subprocess.run(['rm', '-f', LOCK_FILE_PATH+"/"+file_name], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if proc.returncode:
         print(proc.stderr)
         sys.exit(EXIT_UNKNOWN)
@@ -152,7 +165,17 @@ def deleteLockfile(file_name):
         print("Lock file deleted")
 
 def createLockfile(file_name):
-    proc = subprocess.run(['touch', '/etc/zfsync/'+file_name], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    """
+    This function creates a lock file to mark that a backup job process is
+    already running.
+    The function takes one parameter: file_name
+
+    Parameters
+    ----------
+    file_name :     The file name of the lock file to be created
+
+    """
+    proc = subprocess.run(['touch', LOCK_FILE_PATH+"/"+file_name], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if proc.returncode:
         print(proc.stderr)
         sys.exit(EXIT_WARNING)
@@ -160,7 +183,16 @@ def createLockfile(file_name):
         print("Lock file created")
 
 def checkLockFile(file_name):
-    lockfile = Path("/etc/zfsync/" + file_name)
+    """
+    This function checks for the presense of a lock file and returns true or false
+    The function takes one parameter: file_name
+
+    Parameters
+    ----------
+    file_name :     The file name of the lock file to be checked
+
+    """
+    lockfile = Path(LOCK_FILE_PATH+"/"+file_name)
     if lockfile.exists():
         lock_exists = True
     else:
