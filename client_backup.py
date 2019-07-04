@@ -174,7 +174,8 @@ def verifyLVPath(lv_path):
             print("The path is not pointing to a logical volume")
             return False
     else:
-        print("The path to logican volume does not exist")
+        print("The path to logical volume does not exist:")
+        print(lv_path)
         return False
 
 def deleteLockfile(file_name):
