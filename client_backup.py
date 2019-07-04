@@ -1,48 +1,71 @@
 #! /usr/bin/env python3.6
 
-import subprocess, sys
+import subprocess, sys, argparse
 from pathlib import Path
 from datetime import datetime
 
 SNAPSHOT_SIZE = 512 #In megabytes
-SNAPSHOT_NAME_SUFFIX = "_rsync-snapshot_"+datetime.today().strftime('%Y-%m-%d-%H-%M-%S')
+#This name must be provided by the backupserver, so that it is the same
+#both when initializing and ending the backup.
+SNAPSHOT_NAME_SUFFIX = "_rsync-snapshot_2019-06-27"
 SNAPSHOT_MOUNT_PATH = "/mnt/rsyncbackup"
 LOCK_FILE_NAME = "lock"
 (EXIT_OK, EXIT_WARNING, EXIT_CRITICAL, EXIT_UNKNOWN) = (0,1,2,3)
 
+arg_parser = argparse.ArgumentParser(description='Client side script for initializing and ending backups.')
+arg_parser.add_argument('--lv-path', help='Path to the logical volume')
+arg_parser.add_argument('--snap-suffix', help='The suffix of snaphot to be created (if initiating), or deleted (if ending)')
+arguments = arg_parser.parse_args()
+
 def main():
-    if len(sys.argv) is 2:
-        if sys.argv[1] == "--initiate-backup":
-            if checkLockFile(LOCK_FILE_NAME):
-                print("Client lock file is already present. Exiting!")
-                sys.exit(EXIT_WARNING)
-            else:
-                createLockfile(LOCK_FILE_NAME)
-                createLvmSnapshot("/dev/centos/root")
-                deleteLockfile(LOCK_FILE_NAME)
-                sys.exit(EXIT_OK)
-
-        elif sys.argv[1] == "--end-backup":
-            if checkLockFile(LOCK_FILE_NAME):
-                print("Client lock file is already present. Exiting!")
-                sys.exit(EXIT_WARNING)
-            else:
-                createLockfile(LOCK_FILE_NAME)
-                deleteLvmSnapshot("/dev/centos/snap")
-                deleteLockfile(LOCK_FILE_NAME)
-                sys.exit(EXIT_OK)
-
-        else:
-            print("Parameter provided to the script was not accepted. Accepted parameters are \"--initiate-backup\", and \"--cleanup\"")
-            sys.exit(EXIT_UNKNOWN)
-
-    else:
-        print("Wrong number of arguments. There should be exactly one argument. Accepted arguments are \"--initiate-backup\", and \"--cleanup\" ")
-        sys.exit(EXIT_UNKNOWN)
+    # if len(sys.argv) is 3:
+    #     if sys.argv[1] == "--initiate-backup":
+    #         logical_volume = sys.argv[2]
+    #         if checkLockFile(LOCK_FILE_NAME):
+    #             print("Client lock file is already present. Exiting!")
+    #             sys.exit(EXIT_WARNING)
+    #         else:
+    #             createLockfile(LOCK_FILE_NAME)
+    #             createLvmSnapshot(logical_volume, SNAPSHOT_NAME_SUFFIX)
+    #             deleteLockfile(LOCK_FILE_NAME)
+    #             sys.exit(EXIT_OK)
+    #
+    #     elif sys.argv[1] == "--end-backup":
+    #         if checkLockFile(LOCK_FILE_NAME):
+    #             print("Client lock file is already present. Exiting!")
+    #             sys.exit(EXIT_WARNING)
+    #         else:
+    #             createLockfile(LOCK_FILE_NAME)
+    #             deleteLvmSnapshot(logical_volume,SNAPSHOT_NAME_SUFFIX)
+    #             deleteLockfile(LOCK_FILE_NAME)
+    #             sys.exit(EXIT_OK)
+    #
+    #     else:
+    #         print("Parameter provided to the script was not accepted. Accepted parameters are \"--initiate-backup\", and \"--cleanup\"")
+    #         sys.exit(EXIT_UNKNOWN)
+    #
+    # else:
+    #     print("Wrong number of arguments. There should be exactly one argument. Accepted arguments are \"--initiate-backup\", and \"--cleanup\" ")
+    #     sys.exit(EXIT_UNKNOWN)
+    print(arguments)
 
 # Need to add a check of the path to see that it is valid
 # Need to add a check to see if there is enough available space in volume group for snapshot
-def createLvmSnapshot(lvm_path):
+def createLvmSnapshot(lvm_path,snap_suffix):
+    """
+    This function creates an LVM snapshot and mounts it. The snapshot is mounted
+    in a subfolder of SNAPSHOT_MOUNT_PATH.
+    The function takes two parameters: lvm_path and snap_suffix
+
+    Parameters
+    ----------
+    lvm_path :      The path to the logical volume to make snapshot of
+    snap_suffix :   A suffix that will be appended to the name of the snapshot.
+                    This will need to be generated on the backup server, and
+                    provided as a parameter when the script is called
+
+    """
+
     #Check that the lvm_path starts with a /
     if lvm_path[0] != "/":
         print("Logical volume path is invalid. Does not start with a /")
@@ -67,30 +90,53 @@ def createLvmSnapshot(lvm_path):
         deleteLockfile(LOCK_FILE_NAME)
         sys.exit(EXIT_CRITICAL)
 
-    proc = subprocess.run(['lvcreate', '-L'+str(SNAPSHOT_SIZE)+'M', '-s', '-n', lv_name+SNAPSHOT_NAME_SUFFIX, lvm_path], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if proc.returncode:
-        print(proc.stderr)
+    create_snap = subprocess.run(['lvcreate', '-L'+str(SNAPSHOT_SIZE)+'M', '-s', '-n', lv_name+snap_suffix, lvm_path], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if create_snap.returncode:
+        print(create_snap.stderr)
         deleteLockfile(LOCK_FILE_NAME)
         sys.exit(EXIT_CRITICAL)
     else:
-        print(proc.stdout)
+        print(create_snap.stdout)
 
-    rsync_dir = subprocess.run(['mkdir','-p',SNAPSHOT_MOUNT_PATH])
-    proc = subprocess.run(['mount','/dev/'+vg_name+'/'+lv_name+SNAPSHOT_NAME_SUFFIX,SNAPSHOT_MOUNT_PATH], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if proc.returncode:
-        print(proc.stderr)
+    make_mnt_dir = subprocess.run(['mkdir','-p',SNAPSHOT_MOUNT_PATH+"/"+lv_name+snap_suffix],encoding='utf-8', stderr=subprocess.PIPE)
+    if make_mnt_dir.stderr:
+        print("Unable to create directory to mount snapshot")
+        sys.exit(EXIT_CRITICAL)
+
+    mount_snap = subprocess.run(['mount','/dev/'+vg_name+'/'+lv_name+snap_suffix,SNAPSHOT_MOUNT_PATH+"/"+lv_name+snap_suffix], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if mount_snap.returncode:
+        print(mount_snap.stderr)
         #Add deleteLockfile(file_name). Or maybe not, since a crash here will leave an uncleaned snapshot?
         sys.exit(EXIT_CRITICAL)
     else:
-        print(proc.stdout)
+        print(mount_snap.stdout)
         print("Snapshot mounted successfully!")
 
 # Need to add a check of the path to see that it is valid
-def deleteLvmSnapshot(snapshot_path):
+def deleteLvmSnapshot(lvm_path,snap_suffix):
+    """
+    This function unmounts a logical volume snapshot, and deletes the snapshot.
+    lvm_path and snap_suffix are used to find the right mount path and path to
+    snapshot.
+    The function takes two parameters: lvm_path and snap_suffix
+
+    Parameters
+    ----------
+    lvm_path :      The path to the logical volume that was earlier taken a
+                    snapshot of
+    snap_suffix :   The suffix that was appended to the name of the snapshot.
+                    This was generated on the backup server when the backup was
+                    initialized, and provided as a parameter when the script was
+                    called
+    """
+
     #Is this sufficient validation?
     if snapshot_path[0] != "/":
         print("Snapshot path is invalid. Does not start with a /")
         sys.exit(EXIT_CRITICAL)
+    #Extract VG and LV portion of lvm_path
+    vg_name = lvm_path.split("/")[2]
+    lv_name = lvm_path.split("/")[3]
 
     proc = subprocess.run(['umount', '/mnt/snap'], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if proc.returncode:
