@@ -1,16 +1,20 @@
 #! /usr/bin/env python3.6
 
-import subprocess, os.path, paramiko, sys
+import subprocess, os.path, paramiko, sys, argparse
 from datetime import datetime
 from paramiko import SSHClient
+import shared_functions
 (EXIT_OK, EXIT_WARNING, EXIT_CRITICAL, EXIT_UNKNOWN) = (0,1,2,3)
+
+arg_parser = argparse.ArgumentParser(description='Server side script that does the main execution of the backup job.')
+arg_parser.add_argument("action", choices=['backup'], help="Action to perform")
+arg_parser.add_argument('-c','--client', help='FQDN or IP of the client', required=True)
+arg_parser.add_argument('-p','--dataset-path', help='Path to the root folder of where the backupjob is stored', required=True)
+arg_parser.add_argument('-t','--backup-type', help='Type of backup to perform',choices=['full','diff','inc'], required=True)
+arguments = arg_parser.parse_args()
 
 def main():
 
-    # Parameters:
-    #   - Client (hostname of client),
-    #   - Dataset path (path to the root folder of where the backupjob is stored)
-    #   - Backup type (Full, differential, incremental)
 
     # Check status of last run
         # If last run failed, do cleanup
