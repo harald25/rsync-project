@@ -1,6 +1,6 @@
 #! /usr/bin/env python3.6
 
-import subprocess, sys, argparse
+import subprocess, sys, argparse, os, stat
 from pathlib import Path
 from datetime import datetime
 
@@ -19,7 +19,6 @@ arg_parser.add_argument('-s','--snap-suffix', help='The name suffix of snaphot t
 arguments = arg_parser.parse_args()
 
 def main():
-    print(arguments)
     if checkLockFile(LOCK_FILE_NAME):
         print("Client lock file is already present. Exiting!")
         sys.exit(EXIT_WARNING)
@@ -42,29 +41,30 @@ def main():
 
 # Need to add a check of the path to see that it is valid
 # Need to add a check to see if there is enough available space in volume group for snapshot
-def createLvmSnapshot(lvm_path,snap_suffix):
+def createLvmSnapshot(lv_path,snap_suffix):
     """
     This function creates an LVM snapshot and mounts it. The snapshot is mounted
-    in a subfolder of SNAPSHOT_MOUNT_PATH.
-    The function takes two parameters: lvm_path and snap_suffix
+    in a subfolder of SNAPSHOT_MOUNT_PATH. Before a snapshot is created the path
+    is checked to see that it points to an existing block device.
+    The function takes two parameters: lv_path and snap_suffix
 
     Parameters
     ----------
-    lvm_path :      The path to the logical volume to make snapshot of
+    lv_path :      The path to the logical volume to make snapshot of
     snap_suffix :   A suffix that will be appended to the name of the snapshot.
                     This will need to be generated on the backup server, and
                     provided as a parameter when the script is called
 
     """
 
-    #Check that the lvm_path starts with a /
-    if lvm_path[0] != "/":
-        print("Logical volume path is invalid. Does not start with a /")
+    #Check that provided path is valid and pointing to a block device
+    if not verifyLVPath(lv_path):
         deleteLockfile(LOCK_FILE_NAME)
         sys.exit(EXIT_CRITICAL)
-    #Extract VG and LV portion of lvm_path
-    vg_name = lvm_path.split("/")[2]
-    lv_name = lvm_path.split("/")[3]
+
+    #Extract VG and LV portion of lv_path
+    vg_name = lv_path.split("/")[2]
+    lv_name = lv_path.split("/")[3]
 
     #Run the command 'vgs %volume group name%'. Check for errors. Extract free space portion of returned output
     space_in_vg = subprocess.run(['vgs', vg_name, '--noheadings', '--units', 'm', '--nosuffix'], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -81,8 +81,9 @@ def createLvmSnapshot(lvm_path,snap_suffix):
         deleteLockfile(LOCK_FILE_NAME)
         sys.exit(EXIT_CRITICAL)
 
-    create_snap = subprocess.run(['lvcreate', '-L'+str(SNAPSHOT_SIZE)+'M', '-s', '-n', lv_name+snap_suffix, lvm_path], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    create_snap = subprocess.run(['lvcreate', '-L'+str(SNAPSHOT_SIZE)+'M', '-s', '-n', lv_name+snap_suffix, lv_path], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if create_snap.returncode:
+        print("Error while creating snapshot")
         print(create_snap.stderr)
         deleteLockfile(LOCK_FILE_NAME)
         sys.exit(EXIT_CRITICAL)
@@ -104,16 +105,17 @@ def createLvmSnapshot(lvm_path,snap_suffix):
         print("Snapshot mounted successfully!")
 
 # Need to add a check of the path to see that it is valid
-def deleteLvmSnapshot(lvm_path,snap_suffix):
+def deleteLvmSnapshot(lv_path,snap_suffix):
     """
     This function unmounts a logical volume snapshot, and deletes the snapshot.
-    lvm_path and snap_suffix are used to find the right mount path and path to
-    snapshot.
-    The function takes two parameters: lvm_path and snap_suffix
+    lv_path and snap_suffix are used to find the right mount path and path to
+    snapshot. Before a snapshot is delted the path is checked to see that it
+    points to an existing block device.
+    The function takes two parameters: lv_path and snap_suffix
 
     Parameters
     ----------
-    lvm_path :      The path to the logical volume that was earlier taken a
+    lv_path :      The path to the logical volume that was earlier taken a
                     snapshot of
     snap_suffix :   The suffix that was appended to the name of the snapshot.
                     This was generated on the backup server when the backup was
@@ -121,13 +123,21 @@ def deleteLvmSnapshot(lvm_path,snap_suffix):
                     called
     """
 
-    #Is this sufficient validation?
-    if snapshot_path[0] != "/":
-        print("Snapshot path is invalid. Does not start with a /")
+    # Verify specified path to snapshot
+    if not verifyLVPath(lv_path+"/"+snap_suffix):
+        deleteLockfile(LOCK_FILE_NAME)
         sys.exit(EXIT_CRITICAL)
-    #Extract VG and LV portion of lvm_path
-    vg_name = lvm_path.split("/")[2]
-    lv_name = lvm_path.split("/")[3]
+
+    #Check that mount path exists and is a directory
+    if not os.path.isdir(SNAPSHOT_MOUNT_PATH+"/"+lv_name+snap_suffix):
+        print("The mount path generated based on lv_path and snap_suffix does not exist. Exiting!")
+        deleteLockfile(LOCK_FILE_NAME)
+        sys.exit(EXIT_CRITICAL)
+
+    #Extract VG and LV portion of lv_path
+    snapshot_path = lv_path+"/"+snap_suffix
+    vg_name = lv_path.split("/")[2]
+    lv_name = lv_path.split("/")[3]
 
     proc = subprocess.run(['umount', SNAPSHOT_MOUNT_PATH+"/"+lv_name+snap_suffix], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if proc.returncode:
@@ -144,6 +154,28 @@ def deleteLvmSnapshot(lvm_path,snap_suffix):
     else:
         print(proc.stdout)
 
+def verifyLVPath(lv_path):
+    """
+    Returns true if path exists and is pointing to a block device. Or else returns
+    false.
+    The function takes one parameter: lv_path
+
+    Parameters
+    ----------
+    lv_path :     The path to be verified
+
+    """
+
+    if os.path.exists(lv_path):
+        mode = os.stat(lv_path).st_mode
+        if stat.S_ISBLK(mode):
+            return True
+        else:
+            print("The path is not pointing to a logical volume")
+            return False
+    else:
+        print("The path to logican volume does not exist")
+        return False
 
 def deleteLockfile(file_name):
     """
