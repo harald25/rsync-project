@@ -124,7 +124,7 @@ def deleteLvmSnapshot(lv_path,snap_suffix):
     """
 
     # Verify specified path to snapshot
-    if not verifyLVPath(lv_path+"/"+snap_suffix):
+    if not verifyLVPath(lv_path+snap_suffix):
         deleteLockfile(LOCK_FILE_NAME)
         sys.exit(EXIT_CRITICAL)
 
@@ -135,7 +135,7 @@ def deleteLvmSnapshot(lv_path,snap_suffix):
         sys.exit(EXIT_CRITICAL)
 
     #Extract VG and LV portion of lv_path
-    snapshot_path = lv_path+"/"+snap_suffix
+    snapshot_path = lv_path+snap_suffix
     vg_name = lv_path.split("/")[2]
     lv_name = lv_path.split("/")[3]
 
