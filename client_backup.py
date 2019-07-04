@@ -128,16 +128,16 @@ def deleteLvmSnapshot(lv_path,snap_suffix):
         deleteLockfile(LOCK_FILE_NAME)
         sys.exit(EXIT_CRITICAL)
 
+    #Extract VG and LV portion of lv_path
+    snapshot_path = lv_path+snap_suffix
+    vg_name = lv_path.split("/")[2]
+    lv_name = lv_path.split("/")[3]
+
     #Check that mount path exists and is a directory
     if not os.path.isdir(SNAPSHOT_MOUNT_PATH+"/"+lv_name+snap_suffix):
         print("The mount path generated based on lv_path and snap_suffix does not exist. Exiting!")
         deleteLockfile(LOCK_FILE_NAME)
         sys.exit(EXIT_CRITICAL)
-
-    #Extract VG and LV portion of lv_path
-    snapshot_path = lv_path+snap_suffix
-    vg_name = lv_path.split("/")[2]
-    lv_name = lv_path.split("/")[3]
 
     proc = subprocess.run(['umount', SNAPSHOT_MOUNT_PATH+"/"+lv_name+snap_suffix], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if proc.returncode:
