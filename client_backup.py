@@ -12,9 +12,9 @@ LOCK_FILE_NAME = "lock"
 (EXIT_OK, EXIT_WARNING, EXIT_CRITICAL, EXIT_UNKNOWN) = (0,1,2,3)
 
 arg_parser = argparse.ArgumentParser(description='Client side script for initializing and ending backups.')
-arg_parser.add_argument("action", choices=['initiate-backup', 'end-backup'], help="Specify weather to initiate or end backup")
-arg_parser.add_argument('-l','--lv-path', help='Path to the logical volume', required=True)
-arg_parser.add_argument('-s','--snap-suffix', help='The name suffix of snaphot to be created (if initiating), or deleted (if ending)', required=True)
+arg_parser.add_argument("action", choices=['initiate-backup', 'end-backup'], help="Specify weather to initiate or end backup",group="Action")
+arg_parser.add_argument('-l','--lv-path', help='Path to the logical volume', required=True, group="Required arguments")
+arg_parser.add_argument('-s','--snap-suffix', help='The name suffix of snaphot to be created (if initiating), or deleted (if ending)', required=True, group="Required arguments")
 arguments = arg_parser.parse_args()
 
 def main():
