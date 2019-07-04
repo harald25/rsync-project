@@ -1,3 +1,5 @@
+from pathlib import Path
+
 def deleteLockfile(lock_file_path):
     """
     This function deletes a lock file to mark that a backup job process is

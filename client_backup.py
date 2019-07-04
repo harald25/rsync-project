@@ -1,9 +1,8 @@
 #! /usr/bin/env python3.6
 
 import subprocess, sys, argparse, os, stat
-from pathlib import Path
 from datetime import datetime
-import shared_functions
+from shared_functions import *
 
 SNAPSHOT_SIZE = 512 #In megabytes
 #This name must be provided by the backupserver, so that it is the same
