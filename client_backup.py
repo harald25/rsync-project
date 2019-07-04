@@ -147,7 +147,7 @@ def deleteLvmSnapshot(lv_path,snap_suffix):
         print(proc.stdout)
         print("Snapshot unmounted successfully!")
 
-    proc = subprocess.run(['lvremove', '-y', snapshot_path+snap_suffix], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.run(['lvremove', '-y', snapshot_path], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if proc.returncode:
         print(proc.stderr)
         sys.exit(EXIT_CRITICAL)
