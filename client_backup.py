@@ -13,40 +13,37 @@ LOCK_FILE_NAME = "lock"
 (EXIT_OK, EXIT_WARNING, EXIT_CRITICAL, EXIT_UNKNOWN) = (0,1,2,3)
 
 arg_parser = argparse.ArgumentParser(description='Client side script for initializing and ending backups.')
+arg_parser.add_argument("action", choices=['initiate-backup', 'end-backuo', help="Specify weather to initiate or end backup")
 arg_parser.add_argument('-l','--lv-path', help='Path to the logical volume', required=True)
-arg_parser.add_argument('-s','--snap-suffix', help='The suffix of snaphot to be created (if initiating), or deleted (if ending)', required=True)
+arg_parser.add_argument('-s','--snap-suffix', help='The name suffix of snaphot to be created (if initiating), or deleted (if ending)', required=True)
 arguments = arg_parser.parse_args()
 
 def main():
-    # if len(sys.argv) is 3:
-    #     if sys.argv[1] == "--initiate-backup":
-    #         logical_volume = sys.argv[2]
-    #         if checkLockFile(LOCK_FILE_NAME):
-    #             print("Client lock file is already present. Exiting!")
-    #             sys.exit(EXIT_WARNING)
-    #         else:
-    #             createLockfile(LOCK_FILE_NAME)
-    #             createLvmSnapshot(logical_volume, SNAPSHOT_NAME_SUFFIX)
-    #             deleteLockfile(LOCK_FILE_NAME)
-    #             sys.exit(EXIT_OK)
-    #
-    #     elif sys.argv[1] == "--end-backup":
-    #         if checkLockFile(LOCK_FILE_NAME):
-    #             print("Client lock file is already present. Exiting!")
-    #             sys.exit(EXIT_WARNING)
-    #         else:
-    #             createLockfile(LOCK_FILE_NAME)
-    #             deleteLvmSnapshot(logical_volume,SNAPSHOT_NAME_SUFFIX)
-    #             deleteLockfile(LOCK_FILE_NAME)
-    #             sys.exit(EXIT_OK)
-    #
-    #     else:
-    #         print("Parameter provided to the script was not accepted. Accepted parameters are \"--initiate-backup\", and \"--cleanup\"")
-    #         sys.exit(EXIT_UNKNOWN)
-    #
-    # else:
-    #     print("Wrong number of arguments. There should be exactly one argument. Accepted arguments are \"--initiate-backup\", and \"--cleanup\" ")
-    #     sys.exit(EXIT_UNKNOWN)
+    if sys.argv[1] == "--initiate-backup":
+        logical_volume = sys.argv[2]
+        if checkLockFile(LOCK_FILE_NAME):
+            print("Client lock file is already present. Exiting!")
+            sys.exit(EXIT_WARNING)
+        else:
+            createLockfile(LOCK_FILE_NAME)
+            createLvmSnapshot(logical_volume, SNAPSHOT_NAME_SUFFIX)
+            deleteLockfile(LOCK_FILE_NAME)
+            sys.exit(EXIT_OK)
+
+    elif sys.argv[1] == "--end-backup":
+        if checkLockFile(LOCK_FILE_NAME):
+            print("Client lock file is already present. Exiting!")
+            sys.exit(EXIT_WARNING)
+        else:
+            createLockfile(LOCK_FILE_NAME)
+            deleteLvmSnapshot(logical_volume,SNAPSHOT_NAME_SUFFIX)
+            deleteLockfile(LOCK_FILE_NAME)
+            sys.exit(EXIT_OK)
+
+    else:
+        print("Parameter provided to the script was not accepted. Accepted parameters are \"--initiate-backup\", and \"--cleanup\"")
+        sys.exit(EXIT_UNKNOWN)
+
     print(arguments)
 
 # Need to add a check of the path to see that it is valid
