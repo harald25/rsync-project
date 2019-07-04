@@ -1,4 +1,5 @@
 from pathlib import Path
+import sys, subprocess
 
 def deleteLockfile(lock_file_path):
     """
