@@ -3,7 +3,7 @@
 import subprocess, os.path, paramiko, sys, argparse
 from datetime import datetime
 from paramiko import SSHClient
-import shared_functions
+from shared_functions import *
 (EXIT_OK, EXIT_WARNING, EXIT_CRITICAL, EXIT_UNKNOWN) = (0,1,2,3)
 
 arg_parser = argparse.ArgumentParser(description='Server side script that does the main execution of the backup job.')
@@ -13,12 +13,16 @@ arg_parser.add_argument('-p','--dataset-path', help='Path to the root folder of 
 arg_parser.add_argument('-t','--backup-type', help='Type of backup to perform',choices=['full','diff','inc'], required=True)
 arguments = arg_parser.parse_args()
 
+time_now = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
+lock_file = "/"+arguments.dataset_path+"/lock"
+
 def main():
-
-
     # Check status of last run
         # If last run failed, do cleanup
-    # Check for presence of lock file
+    if checkLockFile(lock_file):
+        print("Lock file is present. Exiting!")
+        sys.exit(EXIT_CRITICAL)
+
     #createDataset("backup/backup-ipsec","5_inc","incremental")
     (stdout, stderr, exit_code) = initiateClient("backup-ipsec", "root")
     # Rsync files
@@ -182,7 +186,8 @@ def writeToLog(level, message, root_dataset_name):
     ----------
     level :             Verbosity level: info, warning, critical
     message :           The message to log
-    root_dataset_name : The name of the current dataset. Used to determine log file location
+    root_dataset_name : The name of the current dataset. Used to determine the log
+                        file location
 
     """
     date_now = datetime.today().strftime('%Y-%m-%d')
@@ -190,6 +195,20 @@ def writeToLog(level, message, root_dataset_name):
     with open("/"+root_dataset_name+"/"+time_now+".log", "a+", encoding="utf-8") as log:
         log.write(datetime_now + " - " + level + " - " + message)
     log.closed()
+
+def checkLastBackup(root_dataset_name):
+    """
+    Checks the status from the last run of the bacup. Will return one of:
+    EXIT_OK, EXIT_WARNING, EXIT_CRITICAL, EXIT_UNKNOWN
+
+    Parameters
+    ----------
+    root_dataset_name :             Name of the ZFS root dataset for backupjob to check
+
+    """
+
+    print("her må det gjøres ting")
+
 
 
 
