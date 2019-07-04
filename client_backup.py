@@ -7,7 +7,6 @@ from datetime import datetime
 SNAPSHOT_SIZE = 512 #In megabytes
 #This name must be provided by the backupserver, so that it is the same
 #both when initializing and ending the backup.
-SNAPSHOT_NAME_SUFFIX = "_rsync-snapshot_2019-06-27"
 SNAPSHOT_MOUNT_PATH = "/mnt/rsyncbackup"
 LOCK_FILE_NAME = "lock"
 (EXIT_OK, EXIT_WARNING, EXIT_CRITICAL, EXIT_UNKNOWN) = (0,1,2,3)
@@ -26,11 +25,11 @@ def main():
     else:
         createLockfile(LOCK_FILE_NAME)
         if arguments.action == "initiate-backup":
-            createLvmSnapshot(logical_volume, SNAPSHOT_NAME_SUFFIX)
+            createLvmSnapshot(arguments.lv_path, arguments.snap_suffix)
             deleteLockfile(LOCK_FILE_NAME)
             sys.exit(EXIT_OK)
         elif arguments.action == "end-backup":
-            deleteLvmSnapshot(logical_volume,SNAPSHOT_NAME_SUFFIX)
+            deleteLvmSnapshot(arguments.lv_path, arguments.snap_suffix)
             deleteLockfile(LOCK_FILE_NAME)
             sys.exit(EXIT_OK)
         else:
