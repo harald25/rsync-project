@@ -28,7 +28,7 @@ def main():
         create_lockfile(lock_file)
 
     #Creating new dataset for the backup job
-    returncode = create_dataset(arguments.dataset_name,arguments.volumes,arguments.backup_type)
+    returncode = create_dataset(arguments.dataset_name,arguments.backup_type)
     if returncode:
         print("Critical! Exiting because of error while creating dataset. See log file for details")
         delete_lockfile(lock_file)
