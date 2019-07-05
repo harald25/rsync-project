@@ -24,6 +24,8 @@ def main():
     else:
         create_lockfile(lock_file)
 
+    print(arguments)
+
     #create_dataset("backup/backup-ipsec","5_inc","incremental")
     #(stdout, stderr, exit_code) = initiate_client("backup-ipsec", "root")
     # Rsync files
@@ -35,7 +37,7 @@ def main():
     #     print (stderr)
     # sys.exit(exit_code)
 
-    print(arguments)
+
 
 
 def create_dataset(root_dataset_name, backup_type):

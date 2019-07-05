@@ -1,4 +1,5 @@
 import sys, subprocess, os
+(EXIT_OK, EXIT_WARNING, EXIT_CRITICAL, EXIT_UNKNOWN) = (0,1,2,3)
 
 def delete_lockfile(lock_file_path):
     """
