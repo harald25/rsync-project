@@ -69,7 +69,7 @@ def create_dataset(root_dataset_name, backup_type):
     """
 
     dataset_list = subprocess.run(['zfs', 'list', '-t', 'filesystem', '-o', 'name', '-H', '-r', root_dataset_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    dataset_list = dataset_list[1:] #Remove 1st item from list, since it is the root backupset for the backup job
+    dataset_list = dataset_list.stdout.splitlines()[1:] #Remove 1st item from list, since it is the root backupset for the backup job
     #dataset_list.sort()
 
     if dataset_list.stderr:
