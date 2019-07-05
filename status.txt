@@ -1,0 +1,2 @@
+#Example status file
+successful,2019-06-05-11-11-11_full

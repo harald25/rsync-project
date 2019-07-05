@@ -7,32 +7,36 @@ from shared_functions import *
 (EXIT_OK, EXIT_WARNING, EXIT_CRITICAL, EXIT_UNKNOWN) = (0,1,2,3)
 
 arg_parser = argparse.ArgumentParser(description='Server side script that does the main execution of the backup job.')
-arg_parser.add_argument("action", choices=['backup'], help="Action to perform")
+arg_parser.add_argument("volumes", nargs='*',help="Full path of all the logical volumes to back up")
 arg_parser.add_argument('-c','--client', help='FQDN or IP of the client', required=True)
 arg_parser.add_argument('-p','--dataset-path', help='Path to the root folder of where the backupjob is stored', required=True)
 arg_parser.add_argument('-t','--backup-type', help='Type of backup to perform',choices=['full','diff','inc'], required=True)
+arg_parser.add_argument('-t','--backup-type', help='Type of backup to perform',choices=['full','diff','inc'], required=True)
+
 arguments = arg_parser.parse_args()
 
 time_now = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
 lock_file = "/"+arguments.dataset_path+"/lock"
 
 def main():
-    # Check status of last run
-        # If last run failed, do cleanup
     if check_lockfile(lock_file):
         print("Lock file is present. Exiting!")
         sys.exit(EXIT_CRITICAL)
+    else:
+        create_lockfile(lock_file)
 
     #create_dataset("backup/backup-ipsec","5_inc","incremental")
-    (stdout, stderr, exit_code) = initiate_client("backup-ipsec", "root")
+    #(stdout, stderr, exit_code) = initiate_client("backup-ipsec", "root")
     # Rsync files
     # End backup at client
 
-    if stdout:
-        print(stdout)
-    if stderr:
-        print (stderr)
-    sys.exit(exit_code)
+    # if stdout:
+    #     print(stdout)
+    # if stderr:
+    #     print (stderr)
+    # sys.exit(exit_code)
+
+    print(arguments)
 
 
 def create_dataset(root_dataset_name, backup_type):
@@ -180,8 +184,10 @@ def end_client(client, username):
 
 def check_last_backup_status(root_dataset_name):
     """
-    Checks the status from the last run of the bacup. Will return one of:
-    EXIT_OK, EXIT_WARNING, EXIT_CRITICAL, EXIT_UNKNOWN
+    Checks the status from the last run of the bacup. Will return status and date of last
+    backup, date of last successful backup. If there are no last backups, or no successful
+    backups, the return value will be None
+    The status is checked by parsing /backup/jobname/status.txt
 
     Parameters
     ----------
@@ -190,11 +196,21 @@ def check_last_backup_status(root_dataset_name):
 
     """
 
-    date_now = datetime.today().strftime('%Y-%m-%d')
-    datetime_now = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
-    with open("/"+root_dataset_name+"/"+time_now+".log", "a+", encoding="utf-8") as log:
-        log.write(datetime_now + " - " + level + " - " + message)
-    log.closed()
+    #status_history = []
+    last_successful_date = None
+    last_backup_date = None
+    last_backup_status = None
+
+    datetime_now = datetime.today().strftime('%Y-%m-%d-%H-%M-%S')
+    with open("/"+root_dataset_name+"/"+status+".txt", "r", encoding="utf-8") as status:
+        for line in status:
+            last_backup_status = status.split(",")[0]
+            last_backup_date = status.split(",")[1]
+            if status.split(",")[0] == "successful":
+                last_successful_date = status.split(",")[1]
+
+    status.closed()
+    return last_successful_date, last_backup_date, last_backup_status
 
 
 
