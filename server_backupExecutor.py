@@ -11,7 +11,6 @@ arg_parser.add_argument("volumes", nargs='*',help="Full path of all the logical 
 arg_parser.add_argument('-c','--client', help='FQDN or IP of the client', required=True)
 arg_parser.add_argument('-p','--dataset-path', help='Path to the root folder of where the backupjob is stored', required=True)
 arg_parser.add_argument('-t','--backup-type', help='Type of backup to perform',choices=['full','diff','inc'], required=True)
-arg_parser.add_argument('-t','--backup-type', help='Type of backup to perform',choices=['full','diff','inc'], required=True)
 
 arguments = arg_parser.parse_args()
 
