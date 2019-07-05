@@ -19,12 +19,12 @@ lock_file = "/"+arguments.dataset_path+"/lock"
 def main():
     # Check status of last run
         # If last run failed, do cleanup
-    if checkLockFile(lock_file):
+    if check_lockfile(lock_file):
         print("Lock file is present. Exiting!")
         sys.exit(EXIT_CRITICAL)
 
-    #createDataset("backup/backup-ipsec","5_inc","incremental")
-    (stdout, stderr, exit_code) = initiateClient("backup-ipsec", "root")
+    #create_dataset("backup/backup-ipsec","5_inc","incremental")
+    (stdout, stderr, exit_code) = initiate_client("backup-ipsec", "root")
     # Rsync files
     # End backup at client
 
@@ -35,7 +35,7 @@ def main():
     sys.exit(exit_code)
 
 
-def createDataset(root_dataset_name, backup_type):
+def create_dataset(root_dataset_name, backup_type):
 
     """
     This function creates a ZFS dataset.
@@ -59,10 +59,10 @@ def createDataset(root_dataset_name, backup_type):
 
     if dataset_list.stderr:
         if "dataset does not exist" in dataset_list.stderr:
-            writeToLog("critical", dataset_list.stderr, root_dataset_name)
+            write_to_log("critical", dataset_list.stderr, root_dataset_name)
             sys.exit(EXIT_CRITICAL)
         else:
-            writeToLog("critical", dataset_list.stderr, root_dataset_name)
+            write_to_log("critical", dataset_list.stderr, root_dataset_name)
             sys.exit(EXIT_CRITICAL)
 
     else:
@@ -71,10 +71,10 @@ def createDataset(root_dataset_name, backup_type):
             new_dataset_name = root_dataset_name +'/' + time_now + "_full"
             new_dataset = subprocess.run(['zfs', 'create', new_dataset_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if new_dataset.stderr:
-                writeToLog("critical", new_dataset.stderr, root_dataset_name)
+                write_to_log("critical", new_dataset.stderr, root_dataset_name)
                 sys.exit(EXIT_CRITICAL)
             else:
-                writeToLog("info", "New dataset created: " + new_dataset_name, root_dataset_name)
+                write_to_log("info", "New dataset created: " + new_dataset_name, root_dataset_name)
                 return new_dataset.stdout
 
         if backup_type == "diff":
@@ -87,13 +87,13 @@ def createDataset(root_dataset_name, backup_type):
 
             dataset_list_full.sort()
             last_full_backup = dataset_list_full[-1]
-            snapAndCloneDataset(last_full_backup,"diff")
+            snap_and_clone_dataset(last_full_backup,"diff")
 
         if backup_type == "inc":
             last_backup = dataset_list[-1]
-            snapAndCloneDataset(last_backup,"inc")
+            snap_and_clone_dataset(last_backup,"inc")
 
-def snapAndCloneDataset(dataset_name,suffix):
+def snap_and_clone_dataset(dataset_name,suffix):
     """
     This function creates a ZFS snapshot of specified dataset and makes a clone
     of that snapshot.
@@ -115,20 +115,20 @@ def snapAndCloneDataset(dataset_name,suffix):
     #Take snapshot
     snap = subprocess.run(['zfs', 'snapshot', snapshot_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if snap.stderr:
-        writeToLog("critical", snap.stderr, root_dataset_name)
+        write_to_log("critical", snap.stderr, root_dataset_name)
         sys.exit(EXIT_CRITICAL)
     else:
-        writeToLog("info", "Snapshot created:" +snapshot_name, root_dataset_name)
+        write_to_log("info", "Snapshot created:" +snapshot_name, root_dataset_name)
     #Make clone
     clone = subprocess.run(['zfs', 'clone', snapshot_name, clone_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if clone.stderr:
-        writeToLog("critical", clone.stderr, root_dataset_name)
+        write_to_log("critical", clone.stderr, root_dataset_name)
         sys.exit(EXIT_CRITICAL)
     else:
-        writeToLog("info", "Clone created:" +clone_name, root_dataset_name)
+        write_to_log("info", "Clone created:" +clone_name, root_dataset_name)
 
 
-def initiateClient(client, username):
+def initiate_client(client, username):
     """
     This function initiates a backup on a client by calling 'client_backup.py' on
     the client.
@@ -152,7 +152,7 @@ def initiateClient(client, username):
     ssh.close()
     return (stdout, stderr, exit_code)
 
-def endClient(client, username):
+def end_client(client, username):
 
     """
     This function ends a backup on a client by calling 'client_backup.py' on
@@ -177,38 +177,24 @@ def endClient(client, username):
     ssh.close()
     return (stdout, stderr, exit_code)
 
-def writeToLog(level, message, root_dataset_name):
-    """
-    Writes message and its verbosity level to log file. Timestamp is automatically added
-    Log files are stored at the root dataset for the running backup job.
 
-    Parameters
-    ----------
-    level :             Verbosity level: info, warning, critical
-    message :           The message to log
-    root_dataset_name : The name of the current dataset. Used to determine the log
-                        file location
-
-    """
-    date_now = datetime.today().strftime('%Y-%m-%d')
-    datetime_now = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
-    with open("/"+root_dataset_name+"/"+time_now+".log", "a+", encoding="utf-8") as log:
-        log.write(datetime_now + " - " + level + " - " + message)
-    log.closed()
-
-def checkLastBackup(root_dataset_name):
+def check_last_backup_status(root_dataset_name):
     """
     Checks the status from the last run of the bacup. Will return one of:
     EXIT_OK, EXIT_WARNING, EXIT_CRITICAL, EXIT_UNKNOWN
 
     Parameters
     ----------
-    root_dataset_name :             Name of the ZFS root dataset for backupjob to check
+    root_dataset_name :         Name of the ZFS root dataset for backupjob to check
+                                Example: 'backup/job1'
 
     """
 
-    print("her må det gjøres ting")
-
+    date_now = datetime.today().strftime('%Y-%m-%d')
+    datetime_now = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
+    with open("/"+root_dataset_name+"/"+time_now+".log", "a+", encoding="utf-8") as log:
+        log.write(datetime_now + " - " + level + " - " + message)
+    log.closed()
 
 
 

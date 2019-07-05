@@ -15,7 +15,7 @@ def checkSchedule():
     # Run through matrix and start backup on the machines where it is time for backup (after checking for a lock file)
     print("Schedule")
 
-def checkLockFile1():
+def check_lockfile1():
     # Check if lock file exists for given backup job
         # If lock file exists: check PID
             # If PID exists: return ("Backup running")
