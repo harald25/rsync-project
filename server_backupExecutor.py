@@ -24,11 +24,12 @@ def main():
     write_to_log("info", "Starting backupjob", main_log_file)
     write_to_log("info", str(arguments), main_log_file)
 
+    #Check that the root dataset for the backup job exists.
     if not os.path.isdir("/"+arguments.dataset_name):
         print("Critical! Root dataset for backup job does not exist. Exiting!")
         write_to_log("critical", "Root dataset for backup job, "+arguments.dataset_name+" does not exist. Exiting!", main_log_file)
-    else:
 
+    else:
         if check_lockfile(lock_file):
             print("Lock file is present. Exiting!")
             write_to_log("warning", "Lock file is present. Exiting!", backup_log_file)
@@ -87,6 +88,8 @@ def create_dataset(root_dataset_name, backup_type):
         write_to_log("critical", datasets.stderr, backupjob_log_file)
         return 1
     else:
+        dataset_list = datasets.stdout.splitlines()[1:] #Remove 1st item from list, since it is the root backupset for the backup job
+        
         if backup_type == "full":
             new_dataset_name = root_dataset_name +'/' + time_now + "_full"
             new_dataset = subprocess.run(['zfs', 'create','-p', new_dataset_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
