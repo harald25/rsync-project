@@ -203,6 +203,9 @@ def initiate_client(client, username,lv,suff):
         print("Unable to connect to client")
         write_to_log("critical", "Unable to connect to client '"+client+"' via SSH",backupjob_log_file)
         write_to_log("critical", e,backupjob_log_file)
+        delete_lockfile(lock_file_path)
+        sys.exit(EXIT_CRITICAL)
+        
     (ssh_stdin, ssh_stdout, ssh_stderr) = ssh.exec_command("/root/rsync-project/client_backup.py initiate-backup -l " + lv + " -s "+suff)
     stdout = ssh_stdout.readlines()
     stderr = ssh_stderr.readlines()
