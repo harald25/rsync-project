@@ -46,7 +46,15 @@ def main():
         else:
             print("It's wooorking!")
 
-        #(stdout, stderr, exit_code) = initiate_client("backup-ipsec", "root")
+        #For each logical volume specified, initiate client and run rsync
+        for volume in arguments.volumes:
+            (stdout, stderr, exit_code) = initiate_client(arguments.client, "root", volume,lv_suffix)
+            if exit_code:
+                print("Error:")
+                print(stderr)
+            else:
+                print("Success:")
+                print(stdout)
         # Rsync files
         # End backup at client
 
@@ -171,24 +179,26 @@ def snap_and_clone_dataset(dataset_name,backup_type):
         return 0
 
 
-def initiate_client(client, username):
+def initiate_client(client, username,lv,suff):
     """
     This function initiates a backup on a client by calling 'client_backup.py' on
     the client.
-    The function takes two parameters: client and username
+    The function takes four parameters: client, username, lv, and suff
 
     Parameters
     ----------
     client :        Hostname or IP address of the client where we want to initiate
                     a backup
     username :      The username that we will use to connect to the client.
+    lv:             The path to the logical volume to be snapshotted
+    suff:           Suffix to add to the snapshot name
 
     """
 
     ssh = SSHClient()
     ssh.load_system_host_keys()
     ssh.connect(client, username = username)
-    (ssh_stdin, ssh_stdout, ssh_stderr) = ssh.exec_command('/root/rsync-project/client_backup.py --initiate-backup')
+    (ssh_stdin, ssh_stdout, ssh_stderr) = ssh.exec_command("/root/rsync-project/client_backup.py initiate-backup -l "+lv" +" -s "+suff)
     stdout = ssh_stdout.readlines()
     stderr = ssh_stderr.readlines()
     exit_code = ssh_stdout.channel.recv_exit_status()
