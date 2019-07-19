@@ -1,4 +1,5 @@
 import sys, subprocess, os
+from datetime import datetime
 (EXIT_OK, EXIT_WARNING, EXIT_CRITICAL, EXIT_UNKNOWN) = (0,1,2,3)
 
 def delete_lockfile(lock_file_path):
@@ -50,21 +51,20 @@ def check_lockfile(lock_file_path):
     """
     return os.path.isfile(lock_file_path)
 
-def write_to_log(level, message, root_dataset_name):
+def write_to_log(level, message, log_file):
     """
-    Writes message and its verbosity level to log file. Timestamp is automatically added
-    Log files are stored at the root dataset for the running backup job.
+    Writes message and its verbosity level to specified log file. Timestamp is automatically added
 
     Parameters
     ----------
     level :             Verbosity level: info, warning, critical
     message :           The message to log
-    root_dataset_name : The name of the current dataset. Used to determine the log
-                        file location
+    root_dataset_name : Path to, and name of the log file to write to
 
     """
+
     date_now = datetime.today().strftime('%Y-%m-%d')
     datetime_now = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
-    with open("/"+root_dataset_name+"/"+time_now+".log", "a+", encoding="utf-8") as log:
-        log.write(datetime_now + " - " + level + " - " + message)
+    with open(log_file, "a+", encoding="utf-8") as log:
+        log.write(datetime_now + " - " + level + " - " + message + "\n")
     log.closed()

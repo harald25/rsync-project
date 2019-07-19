@@ -17,6 +17,7 @@ arguments = arg_parser.parse_args()
 time_now = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
 lv_suffix = "_rsyncbackup_"+time_now
 lock_file = "/"+arguments.dataset_name+"/lock"
+log_file = "/"+arguments.dataset_name+"/"+time_now+".log"
 
 def main():
     print(arguments)
@@ -71,7 +72,7 @@ def create_dataset(root_dataset_name, backup_type):
 
     datasets = subprocess.run(['zfs', 'list', '-t', 'filesystem', '-o', 'name', '-H', '-r', root_dataset_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if datasets.stderr:
-        write_to_log("critical", datasets.stderr, root_dataset_name)
+        write_to_log("critical", datasets.stderr, log_file)
         return 1
 
     else:
@@ -81,10 +82,10 @@ def create_dataset(root_dataset_name, backup_type):
             new_dataset_name = root_dataset_name +'/' + time_now + "_full"
             new_dataset = subprocess.run(['zfs', 'create','-p', new_dataset_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if new_dataset.stderr:
-                write_to_log(new_dataset.stderr, root_dataset_name)
+                write_to_log(new_dataset.stderr, log_file)
                 return 1
             else:
-                write_to_log("info", "New dataset created successfuly: " + new_dataset_name, root_dataset_name)
+                write_to_log("info", "New dataset created successfuly: " + new_dataset_name, log_file)
                 return 0
 
         if backup_type == "diff":
@@ -133,17 +134,17 @@ def snap_and_clone_dataset(dataset_name,backup_type):
     #Take snapshot
     snap = subprocess.run(['zfs', 'snapshot', snapshot_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if snap.stderr:
-        write_to_log("critical", snap.stderr, root_dataset_name)
+        write_to_log("critical", snap.stderr, log_file)
         return 1
     else:
-        write_to_log("info", "Snapshot created:" +snapshot_name, root_dataset_name)
+        write_to_log("info", "Snapshot created:" +snapshot_name, log_file)
     #Make clone
     clone = subprocess.run(['zfs', 'clone', snapshot_name, clone_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if clone.stderr:
-        write_to_log("critical", clone.stderr, root_dataset_name)
+        write_to_log("critical", clone.stderr, log_file)
         return 1
     else:
-        write_to_log("info", "Clone created:" +clone_name, root_dataset_name)
+        write_to_log("info", "Clone created:" +clone_name, log_file)
         return 0
 
 
