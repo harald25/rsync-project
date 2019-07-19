@@ -198,7 +198,7 @@ def initiate_client(client, username,lv,suff):
     ssh = SSHClient()
     ssh.load_system_host_keys()
     ssh.connect(client, username = username)
-    (ssh_stdin, ssh_stdout, ssh_stderr) = ssh.exec_command("/root/rsync-project/client_backup.py initiate-backup -l "+lv" +" -s "+suff)
+    (ssh_stdin, ssh_stdout, ssh_stderr) = ssh.exec_command("/root/rsync-project/client_backup.py initiate-backup -l " + lv + " -s "+suff)
     stdout = ssh_stdout.readlines()
     stderr = ssh_stderr.readlines()
     exit_code = ssh_stdout.channel.recv_exit_status()
