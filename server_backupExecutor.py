@@ -14,7 +14,7 @@ arg_parser.add_argument('-t','--backup-type', help='Type of backup to perform',c
 
 arguments = arg_parser.parse_args()
 
-time_now = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
+time_now = datetime.today().strftime('%Y-%m-%dT%H:%M:%S')
 lv_suffix = "_rsyncbackup_"+time_now
 lock_file = "/"+arguments.dataset_name+"/lock"
 log_file = "/"+arguments.dataset_name+"/"+time_now+".log"
@@ -36,7 +36,6 @@ def main():
         sys.exit(EXIT_CRITICAL)
     else:
         print("It's wooorking!")
-        delete_lockfile(lock_file)
 
     #(stdout, stderr, exit_code) = initiate_client("backup-ipsec", "root")
     # Rsync files

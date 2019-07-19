@@ -59,7 +59,7 @@ def write_to_log(level, message, log_file):
     ----------
     level :             Verbosity level: info, warning, critical
     message :           The message to log
-    root_dataset_name : Path to, and name of the log file to write to
+    log_file : Path to, and name of the log file to write to
 
     """
 
@@ -67,4 +67,4 @@ def write_to_log(level, message, log_file):
     datetime_now = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
     with open(log_file, "a+", encoding="utf-8") as log:
         log.write(datetime_now + " - " + level + " - " + message + "\n")
-    log.closed()
+    log.close()
