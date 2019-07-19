@@ -12,9 +12,20 @@ Will be tested on RHEL 6 and 7 for clients. Testing other OSes for the server is
 ###### Server dependencies
 
     /usr/bin/pip3.6 install paramiko
+    zfs must be installed and configured, and a backup set called "backup" must be created
 
 ## Preparations:
 SSH keys must be generated on backup server and copied to clients
 
     ssh-keygen
     ssh-copy-id root@clientmachine
+
+
+## To-do:
+* Implement check of wether last backup was successful or not
+* Finish server_backupExecutor.py
+* Finish server_backupInitiator.py
+* Make install script to set up a fresh backup server
+* Document set-up of the ZFS server
+* Test on other Linux distributions
+* Configure to work with selinux
