@@ -44,7 +44,7 @@ def main():
             delete_lockfile(lock_file)
             sys.exit(EXIT_CRITICAL)
         else:
-            print("It's wooorking!")
+            print("Dataset created")
 
         #For each logical volume specified, initiate client and run rsync
         for volume in arguments.volumes:
@@ -198,18 +198,23 @@ def initiate_client(client, username,lv,suff):
     ssh = SSHClient()
     ssh.load_system_host_keys()
     try:
+        write_to_log("info", "Connecting to '"+client+"' via SSH as user '"+username+"'",backupjob_log_file)
         ssh.connect(client, username = username)
     except Exception as e:
         print("Unable to connect to client")
         write_to_log("critical", "Unable to connect to client '"+client+"' via SSH",backupjob_log_file)
-        write_to_log("critical", e,backupjob_log_file)
-        delete_lockfile(lock_file_path)
+        write_to_log("critical", str(e),backupjob_log_file)
+        delete_lockfile(lock_file)
         sys.exit(EXIT_CRITICAL)
-        
+
     (ssh_stdin, ssh_stdout, ssh_stderr) = ssh.exec_command("/root/rsync-project/client_backup.py initiate-backup -l " + lv + " -s "+suff)
+    print("Stdin: "+ssh_stdin)
+    print("Stout: "+ssh_stdout)
+    print("Stderr: "+ssh_stderr)
     stdout = ssh_stdout.readlines()
     stderr = ssh_stderr.readlines()
     exit_code = ssh_stdout.channel.recv_exit_status()
+    print("Exit code: "+exit_code)
     ssh.close()
     return (stdout, stderr, exit_code)
 
