@@ -14,7 +14,7 @@ arg_parser.add_argument('-t','--backup-type', help='Type of backup to perform',c
 
 arguments = arg_parser.parse_args()
 
-time_now = datetime.today().strftime('%Y-%m-%dT%H:%M:%S')
+time_now = datetime.today().strftime('%Y-%m-%dT%H-%M-%S')
 lv_suffix = "_rsyncbackup_"+time_now
 lock_file = "/"+arguments.dataset_name+"/lock"
 backupjob_log_file = "/"+arguments.dataset_name+"/"+time_now+"_"+arguments.backup_type+".log"
@@ -212,9 +212,9 @@ def initiate_client(client, username,lv,suff):
     stdout = ssh_stdout.readlines()
     stderr = ssh_stderr.readlines()
     exit_code = ssh_stdout.channel.recv_exit_status()
-    print("Stout: "+stdout)
-    print("Stderr: "+stderr)
-    print("Exit code: "+exit_code)
+    print(stdout)
+    print(stderr)
+    print("Exit code: "+str(exit_code))
     ssh.close()
     return (stdout, stderr, exit_code)
 
