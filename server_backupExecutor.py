@@ -31,7 +31,8 @@ def main():
         try:
             create_lockfile(lock_file)
         except Exception as e:
-            print(e)
+            write_to_log("critical", "Unable to create lock file: "+lock_file, main_log_file)
+            write_to_log("critical", e,main_log_file)
             sys.exit(EXIT_CRITICAL)
 
     #Creating new dataset for the backup job
