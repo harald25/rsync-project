@@ -201,22 +201,33 @@ def initiate_client(client, username,lv,suff):
         write_to_log("info", "Connecting to '"+client+"' via SSH as user '"+username+"'",backupjob_log_file)
         ssh.connect(client, username = username)
     except Exception as e:
-        print("Unable to connect to client")
+        print("Unable to connect to client. See log file: " +backupjob_log_file)
         write_to_log("critical", "Unable to connect to client '"+client+"' via SSH",backupjob_log_file)
         write_to_log("critical", str(e),backupjob_log_file)
         delete_lockfile(lock_file)
+        ssh.close()
         sys.exit(EXIT_CRITICAL)
 
-    (ssh_stdin, ssh_stdout, ssh_stderr) = ssh.exec_command("/root/rsync-project/client_backup.py initiate-backup -l " + lv + " -s "+suff)
-    #print("Stdin: "+ssh_stdin)
-    stdout = ssh_stdout.readlines()
-    stderr = ssh_stderr.readlines()
-    exit_code = ssh_stdout.channel.recv_exit_status()
-    print(stdout)
-    print(stderr)
-    print("Exit code: "+str(exit_code))
-    ssh.close()
-    return (stdout, stderr, exit_code)
+    try:
+        (ssh_stdin, ssh_stdout, ssh_stderr) = ssh.exec_command("/root/rsync-project/client_backup.py initiate-backup -l " + lv + " -s "+suff)
+        stdout = ssh_stdout.readlines()
+        stderr = ssh_stderr.readlines()
+        exit_code = ssh_stdout.channel.recv_exit_status()
+        if exit_code:
+            print("Error. See log file: " +backupjob_log_file)
+            write_to_log("critical", str(stderr), backupjob_log_file)
+        else:
+            write_to_log("info",str(stdout),backupjob_log_file)
+        ssh.close()
+        return (stdout, stderr, exit_code)
+
+    except Exepction as e:
+        print("Error. See log file: " +backupjob_log_file)
+        write_to_log("critical", str(e), backupjob_log_file)
+        ssh.close()
+        delete_lockfile(lock_file)
+        sys.exit(EXIT_CRITICAL)
+
 
 def end_client(client, username):
 
