@@ -17,10 +17,12 @@ arguments = arg_parser.parse_args()
 time_now = datetime.today().strftime('%Y-%m-%dT%H:%M:%S')
 lv_suffix = "_rsyncbackup_"+time_now
 lock_file = "/"+arguments.dataset_name+"/lock"
-log_file = "/"+arguments.dataset_name+"/"+time_now+".log"
+backupjob_log_file = "/"+arguments.dataset_name+"/"+time_now+".log"
+main_log_file = "/backup/backupexecutor.log"
 
 def main():
-    print(arguments)
+    write_to_log("info", "Starting backupjob", main_log_file)
+    write_to_log("info", arguments, main_log_file)
 
     if check_lockfile(lock_file):
         print("Lock file is present. Exiting!")
@@ -67,36 +69,32 @@ def create_dataset(root_dataset_name, backup_type):
                         The new dataset for this backup will be created here
 
     backup_type :   is either 'full', 'diff', or 'inc'
-                    If backup type == full, a new empty dataset is created under the specified root_dataset_name
-                    If backup_type == diff, a clone is made from the last successful full backup
+                    If backup type == 'full', a new empty dataset is created under the specified root_dataset_name
+                    If backup_type == 'diff', a clone is made from the last successful full backup
                     If backup_type == 'inc' a clone from the previous successful backup is made, regardless of type
 
     """
 
     #Get a list of all existing datasets under the specified root dataset
     datasets = subprocess.run(['zfs', 'list', '-t', 'filesystem', '-o', 'name', '-H', '-r', root_dataset_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    #If root dataset does not exist. Set backup type to 'full' and continue
-    if "dataset does not exist" in datasets.stderr:
-        write_to_log("info", "Root dataset "+root_dataset_name" did not already exist. Backup type forced to 'full'. A new root dataset will be created", log_file)
-        backup_type = "full"
-    #If error from listing dataset (but not because the dataset does not exist)
-    elif datasets.stderr and ("dataset does not exist" not in datasets.stderr):
-        write_to_log("critical", datasets.stderr, log_file)
+    if datasets.stderr:
+        write_to_log("critical", datasets.stderr, backupjob_log_file)
+    if datasets.stderr:
         return 1
-
-    if backup_type == "full":
-        new_dataset_name = root_dataset_name +'/' + time_now + "_full"
-        new_dataset = subprocess.run(['zfs', 'create','-p', new_dataset_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        if new_dataset.stderr:
-            write_to_log("critical",new_dataset.stderr, log_file)
-            return 1
-        else:
-            write_to_log("info", "New dataset created successfuly: " + new_dataset_name, log_file)
-            return 0
-
+        write_to_log("critical", datasets.stderr, backupjob_log_file)
+        return 1
     else:
-        dataset_list = datasets.stdout.splitlines()[1:] #Remove 1st item from list, since it is the root backupset for the backup job
-        if backup_type == "diff":
+        if backup_type == "full":
+            new_dataset_name = root_dataset_name +'/' + time_now + "_full"
+            new_dataset = subprocess.run(['zfs', 'create','-p', new_dataset_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if new_dataset.stderr:
+                write_to_log("critical",new_dataset.stderr, backupjob_log_file)
+                return 1
+            else:
+                write_to_log("info", "New dataset created successfuly: " + new_dataset_name, backupjob_log_file)
+                return 0
+
+        elif backup_type == "diff":
             #Make a new list with only the full backups
             dataset_list_full = []
             for dataset in dataset_list:
@@ -108,24 +106,25 @@ def create_dataset(root_dataset_name, backup_type):
             last_full_backup = dataset_list_full[-1]
             returncode = snap_and_clone_dataset(last_full_backup,backup_type)
             if returncode:
-                write_to_log("critical", "Error while snapshoting and cloning dataset", log_file)
+                write_to_log("critical", "Error while snapshoting and cloning dataset", backupjob_log_file)
                 return returncode
             else:
-                write_to_log("info", "Snaphot and clone successful", log_file)
+                write_to_log("info", "Snaphot and clone successful", backupjob_log_file)
                 return returncode
 
         elif backup_type == "inc":
             last_backup = dataset_list[-1]
             returncode = snap_and_clone_dataset(last_backup,backup_type)
             if returncode:
-                write_to_log("critical", "Error while snapshoting and cloning dataset", log_file)
+                write_to_log("critical", "Error while snapshoting and cloning dataset", backupjob_log_file)
                 return returncode
             else:
-                write_to_log("info", "Snaphot and clone successful", log_file)
+                write_to_log("info", "Snaphot and clone successful", backupjob_log_file)
                 return returncode
 
         else:
             print ("You should not have been able to get here")
+            write_to_log("critical", "Backup type does not have a valid value", backupjob_log_file)
             sys.exit(EXIT_CRITICAL)
 
 def snap_and_clone_dataset(dataset_name,backup_type):
@@ -153,17 +152,17 @@ def snap_and_clone_dataset(dataset_name,backup_type):
     #Take snapshot
     snap = subprocess.run(['zfs', 'snapshot', snapshot_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if snap.stderr:
-        write_to_log("critical", snap.stderr, log_file)
+        write_to_log("critical", snap.stderr, backupjob_log_file)
         return 1
     else:
-        write_to_log("info", "Snapshot created:" +snapshot_name, log_file)
+        write_to_log("info", "Snapshot created:" +snapshot_name, backupjob_log_file)
     #Make clone
     clone = subprocess.run(['zfs', 'clone', snapshot_name, clone_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if clone.stderr:
-        write_to_log("critical", clone.stderr, log_file)
+        write_to_log("critical", clone.stderr, backupjob_log_file)
         return 1
     else:
-        write_to_log("info", "Clone created:" +clone_name, log_file)
+        write_to_log("info", "Clone created:" +clone_name, backupjob_log_file)
         return 0
 
 
