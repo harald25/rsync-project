@@ -26,7 +26,11 @@ def main():
         print("Lock file is present. Exiting!")
         sys.exit(EXIT_CRITICAL)
     else:
-        create_lockfile(lock_file)
+        try:
+            create_lockfile(lock_file)
+        except Exception as e:
+            print(e)
+            sys.exit(EXIT_CRITICAL)
 
     #Creating new dataset for the backup job
     returncode = create_dataset(arguments.dataset_name,arguments.backup_type)
@@ -69,24 +73,29 @@ def create_dataset(root_dataset_name, backup_type):
 
     """
 
+    #Get a list of all existing datasets under the specified root dataset
     datasets = subprocess.run(['zfs', 'list', '-t', 'filesystem', '-o', 'name', '-H', '-r', root_dataset_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if datasets.stderr:
+    #If root dataset does not exist. Set backup type to 'full' and continue
+    if "dataset does not exist" in datasets.stderr:
+        write_to_log("info", "Root dataset "+root_dataset_name" did not already exist. Backup type forced to 'full'. A new root dataset will be created", log_file)
+        backup_type = "full"
+    #If error from listing dataset (but not because the dataset does not exist)
+    elif datasets.stderr and ("dataset does not exist" not in datasets.stderr):
         write_to_log("critical", datasets.stderr, log_file)
         return 1
 
+    if backup_type == "full":
+        new_dataset_name = root_dataset_name +'/' + time_now + "_full"
+        new_dataset = subprocess.run(['zfs', 'create','-p', new_dataset_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if new_dataset.stderr:
+            write_to_log("critical",new_dataset.stderr, log_file)
+            return 1
+        else:
+            write_to_log("info", "New dataset created successfuly: " + new_dataset_name, log_file)
+            return 0
+
     else:
         dataset_list = datasets.stdout.splitlines()[1:] #Remove 1st item from list, since it is the root backupset for the backup job
-        #dataset_list.sort()
-        if backup_type == "full":
-            new_dataset_name = root_dataset_name +'/' + time_now + "_full"
-            new_dataset = subprocess.run(['zfs', 'create','-p', new_dataset_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            if new_dataset.stderr:
-                write_to_log(new_dataset.stderr, log_file)
-                return 1
-            else:
-                write_to_log("info", "New dataset created successfuly: " + new_dataset_name, log_file)
-                return 0
-
         if backup_type == "diff":
             #Make a new list with only the full backups
             dataset_list_full = []
@@ -99,14 +108,25 @@ def create_dataset(root_dataset_name, backup_type):
             last_full_backup = dataset_list_full[-1]
             returncode = snap_and_clone_dataset(last_full_backup,backup_type)
             if returncode:
-                print("Critical! Error while snapshoting and cloning dataset. See log for details")
+                write_to_log("critical", "Error while snapshoting and cloning dataset", log_file)
                 return returncode
             else:
+                write_to_log("info", "Snaphot and clone successful", log_file)
                 return returncode
 
-        if backup_type == "inc":
+        elif backup_type == "inc":
             last_backup = dataset_list[-1]
-            snap_and_clone_dataset(last_backup,backup_type)
+            returncode = snap_and_clone_dataset(last_backup,backup_type)
+            if returncode:
+                write_to_log("critical", "Error while snapshoting and cloning dataset", log_file)
+                return returncode
+            else:
+                write_to_log("info", "Snaphot and clone successful", log_file)
+                return returncode
+
+        else:
+            print ("You should not have been able to get here")
+            sys.exit(EXIT_CRITICAL)
 
 def snap_and_clone_dataset(dataset_name,backup_type):
     """
