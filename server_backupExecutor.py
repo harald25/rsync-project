@@ -32,7 +32,7 @@ def main():
     else:
         if check_lockfile(lock_file):
             print("Lock file is present. Exiting!")
-            write_to_log("warning", "Lock file is present. Exiting!", backup_log_file)
+            write_to_log("warning", "Lock file is present. Exiting!", backupjob_log_file)
             sys.exit(EXIT_WARNING)
         else:
             create_lockfile(lock_file)
@@ -89,7 +89,7 @@ def create_dataset(root_dataset_name, backup_type):
         return 1
     else:
         dataset_list = datasets.stdout.splitlines()[1:] #Remove 1st item from list, since it is the root backupset for the backup job
-        
+
         if backup_type == "full":
             new_dataset_name = root_dataset_name +'/' + time_now + "_full"
             new_dataset = subprocess.run(['zfs', 'create','-p', new_dataset_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -153,7 +153,6 @@ def snap_and_clone_dataset(dataset_name,backup_type):
 
     snapshot_name = dataset_name +'@' + time_now + "_snap"
     clone_name = root_backup_dataset_name + '/' + time_now + "_" +backup_type
-    time_now = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
 
     #Take snapshot
     snap = subprocess.run(['zfs', 'snapshot', snapshot_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
