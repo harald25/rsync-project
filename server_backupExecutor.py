@@ -8,7 +8,7 @@ from shared_functions import *
 
 arg_parser = argparse.ArgumentParser(description='Server side script that does the main execution of the backup job.')
 arg_parser.add_argument("volumes", nargs='*',help="Full path of all the logical volumes to back up")
-arg_parser.add_argument('-c','--client', help='DNS solvable FQDN, or IP address of the client', required=True)
+arg_parser.add_argument('-c','--client', help='DNS solvable hostname/FQDN, or IP address of the client', required=True)
 arg_parser.add_argument('-p','--dataset-name', help='Name of the root dataset where the backupjob is stored', required=True)
 arg_parser.add_argument('-t','--backup-type', help='Type of backup to perform',choices=['full','diff','inc'], required=True)
 
@@ -30,11 +30,12 @@ def main():
     #Creating new dataset for the backup job
     returncode = create_dataset(arguments.dataset_name,arguments.backup_type)
     if returncode:
-        print("Critical! Exiting because of error while creating dataset. See log file for details")
+        print("Critical! Exiting because of an error while creating ZFS dataset. See log file for details")
         delete_lockfile(lock_file)
         sys.exit(EXIT_CRITICAL)
     else:
         print("It's wooorking!")
+        delete_lockfile(lock_file)
 
     #(stdout, stderr, exit_code) = initiate_client("backup-ipsec", "root")
     # Rsync files
@@ -69,14 +70,13 @@ def create_dataset(root_dataset_name, backup_type):
     """
 
     datasets = subprocess.run(['zfs', 'list', '-t', 'filesystem', '-o', 'name', '-H', '-r', root_dataset_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    dataset_list = datasets.stdout.splitlines()[1:] #Remove 1st item from list, since it is the root backupset for the backup job
-    #dataset_list.sort()
-
-    if dataset_list.stderr:
-        write_to_log("critical", dataset_list.stderr, root_dataset_name)
+    if datasets.stderr:
+        write_to_log("critical", datasets.stderr, root_dataset_name)
         return 1
 
     else:
+        dataset_list = datasets.stdout.splitlines()[1:] #Remove 1st item from list, since it is the root backupset for the backup job
+        #dataset_list.sort()
         if backup_type == "full":
             new_dataset_name = root_dataset_name +'/' + time_now + "_full"
             new_dataset = subprocess.run(['zfs', 'create','-p', new_dataset_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
