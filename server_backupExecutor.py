@@ -22,7 +22,7 @@ main_log_file = "/backup/backupexecutor.log"
 
 def main():
     write_to_log("info", "Starting backupjob", main_log_file)
-    write_to_log("info", arguments, main_log_file)
+    write_to_log("info", str(arguments), main_log_file)
 
     if check_lockfile(lock_file):
         print("Lock file is present. Exiting!")
@@ -62,6 +62,7 @@ def create_dataset(root_dataset_name, backup_type):
     """
     This function creates a ZFS dataset.
     The function takes two parameters: root_dataset_name, and backup_type
+    The root dataset for the backup job must already exist, or else this function will fail and exit
 
     Parameters
     ----------
@@ -77,10 +78,10 @@ def create_dataset(root_dataset_name, backup_type):
 
     #Get a list of all existing datasets under the specified root dataset
     datasets = subprocess.run(['zfs', 'list', '-t', 'filesystem', '-o', 'name', '-H', '-r', root_dataset_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if datasets.stderr:
-        write_to_log("critical", datasets.stderr, backupjob_log_file)
-    if datasets.stderr:
+    if "dataset does not exist" in datasets.stderr:
+        write_to_log("critical", datasets.stderr, main_log_file)
         return 1
+    elif datasets.stderr and ("dataset does not exist" not in datasets.stderr):
         write_to_log("critical", datasets.stderr, backupjob_log_file)
         return 1
     else:
