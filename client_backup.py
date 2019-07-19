@@ -59,6 +59,7 @@ def create_lvm_snapshot(lv_path,snap_suffix):
     #Check that provided path is valid and pointing to a block device
     if not verify_lv_path(lv_path):
         delete_lockfile(LOCK_FILE_PATH)
+        print("Logical volume path is not valid")
         sys.exit(EXIT_CRITICAL)
 
     #Extract VG and LV portion of lv_path

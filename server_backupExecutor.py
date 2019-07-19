@@ -29,7 +29,9 @@ def main():
         print("Critical! Root dataset for backup job does not exist. Exiting!")
         write_to_log("critical", "Root dataset for backup job, "+arguments.dataset_name+" does not exist. Exiting!", main_log_file)
 
+    #Root dataset exists. Let's continue!
     else:
+        #Check if there is a lock file present
         if check_lockfile(lock_file):
             print("Lock file is present. Exiting!")
             write_to_log("warning", "Lock file is present. Exiting!", backupjob_log_file)
@@ -37,8 +39,8 @@ def main():
         else:
             create_lockfile(lock_file)
 
-        #Creating new dataset for the backup job
-        returncode = create_dataset(arguments.dataset_name,arguments.backup_type)
+        #Creating new dataset for the running backup job
+        returncode,current_dataset = create_dataset(arguments.dataset_name,arguments.backup_type)
         if returncode:
             print("Critical! Exiting because of an error while creating ZFS dataset. See log file for details")
             delete_lockfile(lock_file)
@@ -55,7 +57,9 @@ def main():
             else:
                 print("Success:")
                 print(stdout)
-        # Rsync files
+                # Rsync files
+                rsync_files(arguments.client, volume, lv_suffix, current_dataset):
+
         # End backup at client
 
         # if stdout:
@@ -67,13 +71,37 @@ def main():
         delete_lockfile(lock_file)
 
 
+def rsync_files(client, volume, lv_suffix, dataset):    
+    try:
+        lv_snapshot_name = volume+"_"+lv_suffix
+        rsync_process = subprocess.run(['rsync', '-az', '--delete', '-e', 'ssh', 'root@'+client+':'+lv_snapshot_name, '/'+dataset],
+                                        encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if rsync_process.stderr:
+            print(rsync_process.stderr)
+            write_to_log("critical",str(rsync_process.stderr),backupjob_log_file)
+            return False
+        else:
+            print("Rsync complete")
+            print(rsync_process.stdout)
+            write_to_log("info","Rsync complete",backupjob_log_file)
+            write_to_log("info",str(rsync_process.stdout),backupjob_log_file)
+            return True
+    except Exception as e:
+        print(e)
+        write_to_log("critical", str(e), backupjob_log_file)
+        delete_lockfile(lock_file)
+        sys.exit(EXIT_CRITICAL)
+
 
 def create_dataset(root_dataset_name, backup_type):
 
     """
     This function creates a ZFS dataset.
     The function takes two parameters: root_dataset_name, and backup_type
-    The root dataset for the backup job must already exist, or else this function will fail and exit
+    The root dataset for the backup job must already exist, or else this function will fail and exit.
+    The function returns a return code and the name of the new dataset.
+    Return code = 0 = OK
+    Return code = 1 = Fail
 
     Parameters
     ----------
@@ -91,10 +119,10 @@ def create_dataset(root_dataset_name, backup_type):
     datasets = subprocess.run(['zfs', 'list', '-t', 'filesystem', '-o', 'name', '-H', '-r', root_dataset_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if "dataset does not exist" in datasets.stderr:
         write_to_log("critical", datasets.stderr, main_log_file)
-        return 1
+        return 1,""
     elif datasets.stderr and ("dataset does not exist" not in datasets.stderr):
         write_to_log("critical", datasets.stderr, backupjob_log_file)
-        return 1
+        return 1,""
     else:
         dataset_list = datasets.stdout.splitlines()[1:] #Remove 1st item from list, since it is the root backupset for the backup job
 
@@ -103,10 +131,10 @@ def create_dataset(root_dataset_name, backup_type):
             new_dataset = subprocess.run(['zfs', 'create','-p', new_dataset_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if new_dataset.stderr:
                 write_to_log("critical",new_dataset.stderr, backupjob_log_file)
-                return 1
+                return 1,""
             else:
                 write_to_log("info", "New dataset created successfuly: " + new_dataset_name, backupjob_log_file)
-                return 0
+                return 0,new_dataset_name
 
         elif backup_type == "diff":
             #Make a new list with only the full backups
@@ -118,23 +146,23 @@ def create_dataset(root_dataset_name, backup_type):
 
             dataset_list_full.sort()
             last_full_backup = dataset_list_full[-1]
-            returncode = snap_and_clone_dataset(last_full_backup,backup_type)
+            returncode, new_dataset_name = snap_and_clone_dataset(last_full_backup,backup_type)
             if returncode:
                 write_to_log("critical", "Error while snapshoting and cloning dataset", backupjob_log_file)
-                return returncode
+                return returncode,""
             else:
                 write_to_log("info", "Snaphot and clone successful", backupjob_log_file)
-                return returncode
+                return returncode,new_dataset_name
 
         elif backup_type == "inc":
             last_backup = dataset_list[-1]
-            returncode = snap_and_clone_dataset(last_backup,backup_type)
+            returncode,new_dataset_name = snap_and_clone_dataset(last_backup,backup_type)
             if returncode:
                 write_to_log("critical", "Error while snapshoting and cloning dataset", backupjob_log_file)
-                return returncode
+                return returncode,""
             else:
                 write_to_log("info", "Snaphot and clone successful", backupjob_log_file)
-                return returncode
+                return returncode,new_dataset_name
 
         else:
             print ("You should not have been able to get here")
@@ -144,7 +172,9 @@ def create_dataset(root_dataset_name, backup_type):
 def snap_and_clone_dataset(dataset_name,backup_type):
     """
     This function creates a ZFS snapshot of specified dataset and makes a clone
-    of that snapshot.
+    of that snapshot. The function returns a return code and the name of the new dataset.
+    Return code = 0 = OK
+    Return code = 1 = Fail
     The function takes two parameters: dataset_name and backup_type
 
     Parameters
@@ -166,17 +196,17 @@ def snap_and_clone_dataset(dataset_name,backup_type):
     snap = subprocess.run(['zfs', 'snapshot', snapshot_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if snap.stderr:
         write_to_log("critical", snap.stderr, backupjob_log_file)
-        return 1
+        return 1,""
     else:
         write_to_log("info", "Snapshot created: " +snapshot_name, backupjob_log_file)
     #Make clone
     clone = subprocess.run(['zfs', 'clone', snapshot_name, clone_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if clone.stderr:
         write_to_log("critical", clone.stderr, backupjob_log_file)
-        return 1
+        return 1,""
     else:
         write_to_log("info", "Clone created: " +clone_name, backupjob_log_file)
-        return 0
+        return 0,clone_name
 
 
 def initiate_client(client, username,lv,suff):
