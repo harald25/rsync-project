@@ -17,7 +17,7 @@ arguments = arg_parser.parse_args()
 time_now = datetime.today().strftime('%Y-%m-%dT%H:%M:%S')
 lv_suffix = "_rsyncbackup_"+time_now
 lock_file = "/"+arguments.dataset_name+"/lock"
-backupjob_log_file = "/"+arguments.dataset_name+"/"+time_now+".log"
+backupjob_log_file = "/"+arguments.dataset_name+"/"+time_now+"_"+arguments.backup_type+".log"
 main_log_file = "/backup/backupexecutor.log"
 
 def main():
@@ -160,14 +160,14 @@ def snap_and_clone_dataset(dataset_name,backup_type):
         write_to_log("critical", snap.stderr, backupjob_log_file)
         return 1
     else:
-        write_to_log("info", "Snapshot created:" +snapshot_name, backupjob_log_file)
+        write_to_log("info", "Snapshot created: " +snapshot_name, backupjob_log_file)
     #Make clone
     clone = subprocess.run(['zfs', 'clone', snapshot_name, clone_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if clone.stderr:
         write_to_log("critical", clone.stderr, backupjob_log_file)
         return 1
     else:
-        write_to_log("info", "Clone created:" +clone_name, backupjob_log_file)
+        write_to_log("info", "Clone created: " +clone_name, backupjob_log_file)
         return 0
 
 
