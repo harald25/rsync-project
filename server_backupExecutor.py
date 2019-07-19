@@ -24,37 +24,38 @@ def main():
     write_to_log("info", "Starting backupjob", main_log_file)
     write_to_log("info", str(arguments), main_log_file)
 
-    if check_lockfile(lock_file):
-        print("Lock file is present. Exiting!")
-        sys.exit(EXIT_CRITICAL)
+    if not os.path.isdir("/"+arguments.dataset_name):
+        print("Critical! Root dataset for backup job does not exist. Exiting!")
+        write_to_log("critical", "Root dataset for backup job, "+arguments.dataset_name+" does not exist. Exiting!", main_log_file)
     else:
-        try:
+
+        if check_lockfile(lock_file):
+            print("Lock file is present. Exiting!")
+            write_to_log("warning", "Lock file is present. Exiting!", backup_log_file)
+            sys.exit(EXIT_WARNING)
+        else:
             create_lockfile(lock_file)
-        except Exception as e:
-            write_to_log("critical", "Unable to create lock file: "+lock_file, main_log_file)
-            write_to_log("critical", e,main_log_file)
+
+        #Creating new dataset for the backup job
+        returncode = create_dataset(arguments.dataset_name,arguments.backup_type)
+        if returncode:
+            print("Critical! Exiting because of an error while creating ZFS dataset. See log file for details")
+            delete_lockfile(lock_file)
             sys.exit(EXIT_CRITICAL)
+        else:
+            print("It's wooorking!")
 
-    #Creating new dataset for the backup job
-    returncode = create_dataset(arguments.dataset_name,arguments.backup_type)
-    if returncode:
-        print("Critical! Exiting because of an error while creating ZFS dataset. See log file for details")
+        #(stdout, stderr, exit_code) = initiate_client("backup-ipsec", "root")
+        # Rsync files
+        # End backup at client
+
+        # if stdout:
+        #     print(stdout)
+        # if stderr:
+        #     print (stderr)
+        # sys.exit(exit_code)
+
         delete_lockfile(lock_file)
-        sys.exit(EXIT_CRITICAL)
-    else:
-        print("It's wooorking!")
-
-    #(stdout, stderr, exit_code) = initiate_client("backup-ipsec", "root")
-    # Rsync files
-    # End backup at client
-
-    # if stdout:
-    #     print(stdout)
-    # if stderr:
-    #     print (stderr)
-    # sys.exit(exit_code)
-
-    delete_lockfile(lock_file)
 
 
 
