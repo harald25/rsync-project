@@ -291,7 +291,7 @@ def initiate_client(client, username,lv,suff):
         exit_code = ssh_stdout.channel.recv_exit_status()
         if exit_code:
             print("Stderr output:" +str(stderr))
-            print("Std output:" +str(stdout))
+            print("Stdout output:" +str(stdout))
             write_to_log("critical","Stderr output:" +str(stderr), backupjob_log_file)
             write_to_log("critical","Stdout output:" +str(stdout), backupjob_log_file)
         else:

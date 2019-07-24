@@ -94,14 +94,14 @@ def create_lvm_snapshot(lv_path,snap_suffix):
     if make_mnt_dir.stderr:
         print("CRITICAL! Unable to create directory to mount snapshot")
         remove_snap = subprocess.run(['lvremove', '-y',lv_path+snap_suffix], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        delete_lockfile(lock_file)
+        delete_lockfile(LOCK_FILE_PATH)
         sys.exit(EXIT_CRITICAL)
 
     mount_snap = subprocess.run(['mount','/dev/'+vg_name+'/'+lv_name+snap_suffix,SNAPSHOT_MOUNT_PATH+"/"+lv_name+snap_suffix], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if mount_snap.returncode:
         print(mount_snap.stderr)
         remove_snap = subprocess.run(['lvremove', '-y',lv_path+snap_suffix], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        delete_lockfile(lock_file)
+        delete_lockfile(LOCK_FILE_PATH)
         sys.exit(EXIT_CRITICAL)
     else:
         print(mount_snap.stdout)
