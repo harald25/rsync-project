@@ -175,7 +175,7 @@ def create_dataset(root_dataset_name, backup_type):
             #If dataset_list is empty there are no previous backups, and we will force a full backup
             print("No previous backups. Backup type force to 'full'")
             write_to_log("info","No previous backups. Backup type force to 'full'", backupjob_log_file)
-            backup_type = full
+            backup_type = "full"
 
         if backup_type == "full":
             new_dataset_name = root_dataset_name +'/' + time_now + "_full"
