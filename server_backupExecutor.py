@@ -70,12 +70,12 @@ def main():
                         print("Unable to end_client for volume: "+volume+lv_suffix)
                         print(ec_stderr)
                         write_to_log("critical","Unable to end_client for volume: "+volume+lv_suffix,backupjob_log_file)
-                        write_to_log("critical",ec_stderr,backupjob_log_file)
+                        write_to_log("critical",str(ec_stderr),backupjob_log_file)
                     else:
                         print("end_client successful for volume: "+volume+lv_suffix)
                         print(ec_stdout)
                         write_to_log("info","end_client successful for volume: "+volume+lv_suffix,backupjob_log_file)
-                        write_to_log("info",ec_stdout,backupjob_log_file)
+                        write_to_log("info",str(ec_stdout),backupjob_log_file)
                     delete_lockfile(lock_file)
                     sys.exit(EXIT_CRITICAL)
                 else:
@@ -86,12 +86,12 @@ def main():
                         print("Unable to end_client for volume: "+volume+lv_suffix)
                         print(ec_stderr)
                         write_to_log("critical","Unable to end_client for volume: "+volume+lv_suffix,backupjob_log_file)
-                        write_to_log("critical",ec_stderr,backupjob_log_file)
+                        write_to_log("critical",str(ec_stderr),backupjob_log_file)
                     else:
                         print("end_client successful for volume: "+volume+lv_suffix)
                         print(ec_stdout)
                         write_to_log("info","end_client successful for volume: "+volume+lv_suffix,backupjob_log_file)
-                        write_to_log("info",ec_stdout,backupjob_log_file)
+                        write_to_log("info",str(ec_stdout),backupjob_log_file)
 
 
 
