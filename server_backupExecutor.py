@@ -11,7 +11,7 @@ arg_parser.add_argument("volumes", nargs='*',help="Full path of all the logical 
 arg_parser.add_argument('-c','--client', help='DNS solvable hostname/FQDN, or IP address of the client', required=True)
 arg_parser.add_argument('-p','--dataset-name', help='Name of the root dataset where the backupjob is stored', required=True)
 arg_parser.add_argument('-t','--backup-type', help='Type of backup to perform',choices=['full','diff','inc'], required=True)
-arg_parser.add_argument('-v','--verbosity-level',nargs='?', const=2, type=int, help='Level of verbosity for logging and printing. 0 = no logging/printing, 1 = errors, 2 = warning + error, 3 = warning+error+info')
+arg_parser.add_argument('-v','--verbosity-level',nargs='?', const=3, type=int, default=3, help='Level of verbosity for logging and printing. 0 = no logging/printing, 1 = errors, 2 = warning + error, 3 = warning+error+info')
 
 arguments = arg_parser.parse_args()
 
