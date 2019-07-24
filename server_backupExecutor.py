@@ -48,8 +48,7 @@ def main():
             delete_lockfile(lock_file)
             sys.exit(EXIT_CRITICAL)
         else:
-
-            log_and_print(arguments.verbosity_level,info", "Dataset created", backupjob_log_file)
+            log_and_print(arguments.verbosity_level,"info", "Dataset created", backupjob_log_file)
 
         #For each logical volume specified, initiate client and run rsync
         for volume in arguments.volumes:
