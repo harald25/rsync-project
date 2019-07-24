@@ -76,7 +76,7 @@ def log_and_print(verbosity,level, message, log_file):
     else:
         level_as_int = 0
 
-    if verbosity >= level_as_int:
+    if int(verbosity) >= level_as_int:
         date_now = datetime.today().strftime('%Y-%m-%d')
         datetime_now = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
         with open(log_file, "a+", encoding="utf-8") as log:
