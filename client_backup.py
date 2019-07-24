@@ -100,8 +100,14 @@ def create_lvm_snapshot(lv_path,snap_suffix):
     mount_snap = subprocess.run(['mount','/dev/'+vg_name+'/'+lv_name+snap_suffix,SNAPSHOT_MOUNT_PATH+"/"+lv_name+snap_suffix], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if mount_snap.returncode:
         print(mount_snap.stderr)
+        print("Cleaning up the snapshot")
         remove_snap = subprocess.run(['lvremove', '-y',lv_path+snap_suffix], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        delete_lockfile(LOCK_FILE_PATH)
+        if remove_snap.returncode:
+            print(str(remove_snap.stderr))
+            # Do not delete lock file since snapshot was not removed
+        else:
+            print(str(remove_snap.stdout))
+            delete_lockfile(LOCK_FILE_PATH)
         sys.exit(EXIT_CRITICAL)
     else:
         print(mount_snap.stdout)
