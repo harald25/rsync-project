@@ -146,9 +146,9 @@ def delete_lv_snapshot(lv_path,snap_suffix):
     snap_mount_path = SNAPSHOT_MOUNT_PATH+"/"+lv_name+snap_suffix
     status = 0
 
-    ##### Unmount snapshot and delete mount folder #####
-    if os.path.isdir(snap_mount_path):
-
+    ##### Unmount snapshot #####
+    check_if_mounted = subprocess.run(['grep','-qs',lv_name+snap_suffix,'/proc/mounts'], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if not check_if_mounted.returncode:
         proc = subprocess.run(['umount', snap_mount_path], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if proc.returncode:
             print("Critical! Error during unmounting of snapshot: "+snap_mount_path)
@@ -157,7 +157,12 @@ def delete_lv_snapshot(lv_path,snap_suffix):
         else:
             print("Snapshot unmounted successfully!")
             print(proc.stdout)
+    else:
+        print("Warning! Specified snapshot is not mounted")
+        status += 1
 
+    ##### Delete mount folder #####
+    if os.path.isdir(snap_mount_path):
         # Should probably add a check here to verify that we are not deleting something we shouldn't
         proc = subprocess.run(['rm','-rf',snap_mount_path], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if proc.returncode:
@@ -186,7 +191,7 @@ def delete_lv_snapshot(lv_path,snap_suffix):
         status += 1
 
     #Check how many of the tasks failed
-    if status < 2:
+    if status < 3:
         return 0 #0 = OK
     else:
         return 1 #1 = Not OK
