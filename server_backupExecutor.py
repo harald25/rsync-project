@@ -119,7 +119,7 @@ def rsync_files(client, volume, lv_suffix, dataset):
             return 1 # 1 = error
         else:
             print("New directory created successfully: "+backup_dest_dir)
-            write_to_log("critical","Unable to create directory: "+backup_dest_dir)
+            write_to_log("critical","Unable to create directory: "+backup_dest_dir,backupjob_log_file)
             rsync_process = subprocess.run(['rsync', '-az', '--delete', '-e', 'ssh', 'root@'+client+':'+lv_mount_path, backup_dest_dir],
                                             encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if rsync_process.stderr:
