@@ -28,14 +28,16 @@ def main():
             delete_lockfile(LOCK_FILE_PATH)
             sys.exit(EXIT_OK)
         elif arguments.action == "end-backup":
-            delete_lv_snapshot(arguments.lv_path, arguments.snap_suffix)
-            delete_lockfile(LOCK_FILE_PATH)
-            sys.exit(EXIT_OK)
+            if delete_lv_snapshot(arguments.lv_path, arguments.snap_suffix):
+                delete_lockfile(LOCK_FILE_PATH)
+                sys.exit(EXIT_WARNING)
+            else:
+                delete_lockfile(LOCK_FILE_PATH)
+                sys.exit(EXIT_OK)
         else:
             print("CRITICAL! You are not supposed to be able to end up here")
             delete_lockfile(LOCK_FILE_PATH)
             sys.exit(EXIT_CRITICAL)
-
 
 
 # Need to add a check of the path to see that it is valid
@@ -93,20 +95,23 @@ def create_lvm_snapshot(lv_path,snap_suffix):
     make_mnt_dir = subprocess.run(['mkdir','-p',SNAPSHOT_MOUNT_PATH+"/"+lv_name+snap_suffix],encoding='utf-8', stderr=subprocess.PIPE)
     if make_mnt_dir.stderr:
         print("CRITICAL! Unable to create directory to mount snapshot")
-        remove_snap = subprocess.run(['lvremove', '-y',lv_path+snap_suffix], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        delete_lockfile(LOCK_FILE_PATH)
+        if delete_lv_snapshot(lv_path,snap_suffix):
+            print("Unable to clean up")
+            #Leave lock file since cleanup was not successfull
+        else:
+            print("Cleanup successful")
+            delete_lockfile(LOCK_FILE_PATH)
         sys.exit(EXIT_CRITICAL)
 
     mount_snap = subprocess.run(['mount','/dev/'+vg_name+'/'+lv_name+snap_suffix,SNAPSHOT_MOUNT_PATH+"/"+lv_name+snap_suffix], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if mount_snap.returncode:
         print(mount_snap.stderr)
         print("Cleaning up the snapshot")
-        remove_snap = subprocess.run(['lvremove', '-y',lv_path+snap_suffix], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        if remove_snap.returncode:
-            print(str(remove_snap.stderr))
-            # Do not delete lock file since snapshot was not removed
+        if delete_lv_snapshot(lv_path,snap_suffix):
+            print("Unable to clean up")
+            #Leave lock file since cleanup was not successfull
         else:
-            print(str(remove_snap.stdout))
+            print("Cleanup successful")
             delete_lockfile(LOCK_FILE_PATH)
         sys.exit(EXIT_CRITICAL)
     else:
@@ -121,6 +126,8 @@ def delete_lv_snapshot(lv_path,snap_suffix):
     snapshot. Before a snapshot is deleted the path is checked to see that it
     points to an existing block device.
     The function takes two parameters: lv_path and snap_suffix
+    Returns 0 if any one of the three tasks(unmount, delete mount folder, remove snapshot)
+    was completed successfully. Returns 1 if all three failed.
 
     Parameters
     ----------
@@ -132,46 +139,60 @@ def delete_lv_snapshot(lv_path,snap_suffix):
                     called
     """
 
-    # Verify specified path to snapshot
-    if not verify_lv_path(lv_path+snap_suffix):
-        delete_lockfile(LOCK_FILE_PATH)
-        sys.exit(EXIT_CRITICAL)
-
     #Extract VG and LV portion of lv_path
     snapshot_path = lv_path+snap_suffix
     vg_name = lv_path.split("/")[2]
     lv_name = lv_path.split("/")[3]
+    snap_mount_path = SNAPSHOT_MOUNT_PATH+"/"+lv_name+snap_suffix
+    status = 0
 
-    #Check that mount path exists and is a directory
-    if not os.path.isdir(SNAPSHOT_MOUNT_PATH+"/"+lv_name+snap_suffix):
-        print("CRITICAL! The mount path generated based on lv_path and snap_suffix does not exist. Exiting!")
-        delete_lockfile(LOCK_FILE_PATH)
-        sys.exit(EXIT_CRITICAL)
-    else:
-        proc = subprocess.run(['umount', SNAPSHOT_MOUNT_PATH+"/"+lv_name+snap_suffix], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    ##### Unmount snapshot and delete mount folder #####
+    if os.path.isdir(snap_mount_path):
+
+        proc = subprocess.run(['umount', snap_mount_path], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if proc.returncode:
+            print("Critical! Error during unmounting of snapshot: "+snap_mount_path)
+            print(proc.stderr)
+            sys.exit(EXIT_CRITICAL)
+        else:
+            print("Snapshot unmounted successfully!")
+            print(proc.stdout)
+
+        # Should probably add a check here to verify that we are not deleting something we shouldn't
+        proc = subprocess.run(['rm','-rf',snap_mount_path], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if proc.returncode:
+            print("Error while trying to remove snapshot mount folder: "+snap_mount_path)
             print(proc.stderr)
             sys.exit(EXIT_CRITICAL)
         else:
             print(proc.stdout)
-            print("Snapshot unmounted successfully!")
+            print("Snapshot mount folder deleted successfully!")
+    else:
+        print("Warning! Snapshot mount path was not found: "+snap_mount_path)
+        status += 1
 
-            # Should probably add a check here to verify that we are not deleting something we shouldn't
-            proc = subprocess.run(['rm','-rf',SNAPSHOT_MOUNT_PATH+"/"+lv_name+snap_suffix], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            if proc.returncode:
-                print(proc.stderr)
-                sys.exit(EXIT_CRITICAL)
-            else:
-                print(proc.stdout)
-                print("Snapshot mount folder deleted successfully!")
+    ##### Remove snapshot #####
+    if verify_lv_path(snapshot_path):
+        proc = subprocess.run(['lvremove', '-y', snapshot_path], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if proc.returncode:
+            print("Error while trying to remove logical volume snapshot: "+snapshot_path)
+            print(proc.stderr)
+            sys.exit(EXIT_CRITICAL)
+        else:
+            print("Logical volume snapshot removed successfully!")
+            print(proc.stdout)
+    else:
+        print("Warning! Could not find the specified snapshot: "+lv_path+snap_suffix)
+        status += 1
 
-                proc = subprocess.run(['lvremove', '-y', snapshot_path], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                if proc.returncode:
-                    print(proc.stderr)
-                    sys.exit(EXIT_CRITICAL)
-                else:
-                    print("Logical volume snapshot removed successfully!")
-                    print(proc.stdout)
+    #Check how many of the tasks failed
+    if status < 2:
+        return 0 #0 = OK
+    else:
+        return 1 #1 = Not OK
+
+
+
 
 def verify_lv_path(lv_path):
     """
