@@ -291,8 +291,10 @@ def initiate_client(client, username,lv,suff):
         stderr = ssh_stderr.readlines()
         exit_code = ssh_stdout.channel.recv_exit_status()
         if exit_code:
-            print("Error. See log file: " +backupjob_log_file)
-            write_to_log("critical", str(stderr), backupjob_log_file)
+            print("Stderr output:" +str(stderr))
+            print("Std output:" +str(stdout))
+            write_to_log("critical","Stderr output:" +str(stderr), backupjob_log_file)
+            write_to_log("critical","Stdout output:" +str(stdout), backupjob_log_file)
         else:
             write_to_log("info",str(stdout),backupjob_log_file)
         ssh.close()
