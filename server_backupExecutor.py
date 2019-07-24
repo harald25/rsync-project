@@ -20,6 +20,7 @@ lock_file = "/"+arguments.dataset_name+"/lock"
 backupjob_log_file = "/"+arguments.dataset_name+"/"+time_now+"_"+arguments.backup_type+".log"
 main_log_file = "/backup/backupexecutor.log"
 client_snapshot_mount_path = "/mnt/rsyncbackup"
+ssh_user = "root"
 
 def main():
     write_to_log("info", "Starting backupjob", main_log_file)
@@ -52,7 +53,7 @@ def main():
 
         #For each logical volume specified, initiate client and run rsync
         for volume in arguments.volumes:
-            (ic_stdout, ic_stderr, ic_exit_code) = initiate_client(arguments.client, "root", volume,lv_suffix)
+            (ic_stdout, ic_stderr, ic_exit_code) = initiate_client(arguments.client, ssh_user, volume,lv_suffix)
             if ic_exit_code:
                 print("Error while initiating client:")
                 print(ic_stderr)
@@ -66,7 +67,7 @@ def main():
                 if rsync_status:
                     print("Rsync failed for volume: "+volume+lv_suffix)
                     write_to_log("critical","Rsync failed for volume: "+volume+lv_suffix,backupjob_log_file)
-                    (ec_stdout, ec_stderr, ec_exit_code) = end_client(arguments.client, "root", volume,lv_suffix)
+                    (ec_stdout, ec_stderr, ec_exit_code) = end_client(arguments.client, ssh_user, volume,lv_suffix)
                     if ec_exit_code:
                         print("Unable to end_client for volume: "+volume+lv_suffix)
                         print(ec_stderr)
@@ -82,7 +83,7 @@ def main():
                 else:
                     print("Rsync succeeded for volume: "+volume+lv_suffix)
                     write_to_log("info","Rsync succeeded for volume: "+volume+lv_suffix,backupjob_log_file)
-                    (ec_stdout, ec_stderr, ec_exit_code) = end_client(arguments.client, "root", volume,lv_suffix)
+                    (ec_stdout, ec_stderr, ec_exit_code) = end_client(arguments.client, ssh_user, volume,lv_suffix)
                     if ec_exit_code:
                         print("Unable to end_client for volume: "+volume+lv_suffix)
                         print(ec_stderr)
@@ -113,7 +114,7 @@ def rsync_files(client, volume, lv_suffix, dataset):
         new_dir = subprocess.run(['mkdir',backup_dest_dir ])
         if new_dir.stderr:
             print(new_dir.stderr)
-            write_to_log("critical","Unable to create directory: "+backup_dest_dir,backupjob_log_file)
+            write_to_log("critical","Unable to create directory: "+backup_dest_dir, backupjob_log_file)
             write_to_log("critical",str(new_dir.stderr),backupjob_log_file)
             return 1 # 1 = error
         else:
@@ -134,6 +135,7 @@ def rsync_files(client, volume, lv_suffix, dataset):
     except Exception as e:
         print(e)
         write_to_log("critical", str(e), backupjob_log_file)
+        end_client(client,ssh_user,volume,lv_suffix)
         delete_lockfile(lock_file)
         sys.exit(EXIT_CRITICAL)
 
