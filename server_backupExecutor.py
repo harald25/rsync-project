@@ -104,22 +104,33 @@ def main():
 
 
 def rsync_files(client, volume, lv_suffix, dataset):
-    lv_name = volume.split("/")[3]
-    lv_mount_path = client_snapshot_mount_path+"/"+lv_name+lv_suffix+"/" #We add a trailing slash to copy contents and not the directory itself
     try:
+        lv_name = volume.split("/")[3]
+        lv_mount_path = client_snapshot_mount_path+"/"+lv_name+lv_suffix+"/" #We add a trailing slash to copy contents and not the directory itself
         lv_snapshot_name = volume+lv_suffix
-        rsync_process = subprocess.run(['rsync', '-az', '--delete', '-e', 'ssh', 'root@'+client+':'+lv_mount_path, '/'+dataset],
-                                        encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        if rsync_process.stderr:
-            print(rsync_process.stderr)
-            write_to_log("critical",str(rsync_process.stderr),backupjob_log_file)
+        backup_dest_dir = "/"+dataset+"/"+lv_name
+
+        new_dir = subprocess.run(['mkdir',backup_dest_dir ])
+        if new_dir.stderr:
+            print(new_dir.stderr)
+            write_to_log("critical","Unable to create directory: "+backup_dest_dir,backupjob_log_file)
+            write_to_log("critical",str(new_dir.stderr),backupjob_log_file)
             return 1 # 1 = error
         else:
-            print("Rsync complete")
-            print(rsync_process.stdout)
-            write_to_log("info","Rsync complete",backupjob_log_file)
-            write_to_log("info",str(rsync_process.stdout),backupjob_log_file)
-            return 0 # 0 = OK
+            print("New directory created successfully: "+backup_dest_dir)
+            write_to_log("critical","Unable to create directory: "+backup_dest_dir)
+            rsync_process = subprocess.run(['rsync', '-az', '--delete', '-e', 'ssh', 'root@'+client+':'+lv_mount_path, backup_dest_dir],
+                                            encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if rsync_process.stderr:
+                print(rsync_process.stderr)
+                write_to_log("critical",str(rsync_process.stderr),backupjob_log_file)
+                return 1 # 1 = error
+            else:
+                print("Rsync complete")
+                print(rsync_process.stdout)
+                write_to_log("info","Rsync complete",backupjob_log_file)
+                write_to_log("info",str(rsync_process.stdout),backupjob_log_file)
+                return 0 # 0 = OK
     except Exception as e:
         print(e)
         write_to_log("critical", str(e), backupjob_log_file)
