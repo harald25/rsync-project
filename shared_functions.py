@@ -83,6 +83,6 @@ def log_and_print(verbosity,level, message, log_file):
             log.write(datetime_now + " - " + level + " - " + message + "\n")
         log.close()
         print(level,"-",message)
-        if level_as_int = 0:
+        if level_as_int == 0:
             print("The level specified is not valid. Message will be logged, but this should be fixed")
             log.write(datetime_now + "The level specified is not valid. Message will be logged, but this should be fixed \n")
