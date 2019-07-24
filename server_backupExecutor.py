@@ -104,8 +104,7 @@ def main():
 
 def rsync_files(client, volume, lv_suffix, dataset):
     try:
-        # There is an error here on purpose
-        lv_snapshot_name = volume+"_"+lv_suffix
+        lv_snapshot_name = volume+lv_suffix
         rsync_process = subprocess.run(['rsync', '-az', '--delete', '-e', 'ssh', 'root@'+client+':'+lv_snapshot_name, '/'+dataset],
                                         encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if rsync_process.stderr:
