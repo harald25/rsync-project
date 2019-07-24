@@ -24,19 +24,19 @@ client_snapshot_mount_path = "/mnt/rsyncbackup"
 ssh_user = "root"
 
 def main():
-    write_to_log("info", "Starting backupjob", main_log_file)
-    write_to_log("info", str(arguments), main_log_file)
+    log_and_print(arguments.verbosity_level,"info", "Starting backupjob", main_log_file)
+    log_and_print(arguments.verbosity_level,"info", str(arguments), main_log_file)
 
     #Check that the root dataset for the backup job exists.
     if not os.path.isdir("/"+arguments.dataset_name):
-        write_to_log("critical", "Root dataset for backup job, "+arguments.dataset_name+" does not exist. Exiting!", main_log_file)
+        log_and_print(arguments.verbosity_level,"critical", "Root dataset for backup job, "+arguments.dataset_name+" does not exist. Exiting!", main_log_file)
         sys.exit(EXIT_CRITICAL)
 
     #Root dataset exists. Let's continue!
     else:
         #Check if there is a lock file present
         if check_lockfile(lock_file):
-            write_to_log("warning", "Lock file is present. Exiting!", backupjob_log_file)
+            log_and_print(arguments.verbosity_level,"warning", "Lock file is present. Exiting!", backupjob_log_file)
             sys.exit(EXIT_WARNING)
         else:
             create_lockfile(lock_file)
@@ -44,74 +44,74 @@ def main():
         #Creating new dataset for the running backup job
         returncode,current_dataset = create_dataset(arguments.dataset_name,arguments.backup_type)
         if returncode:
-            write_to_log("critical", "Error while creating dataset", backupjob_log_file)
+            log_and_print(arguments.verbosity_level,"critical", "Error while creating dataset", backupjob_log_file)
             delete_lockfile(lock_file)
             sys.exit(EXIT_CRITICAL)
         else:
 
-            write_to_log(info", "Dataset created", backupjob_log_file)
+            log_and_print(arguments.verbosity_level,info", "Dataset created", backupjob_log_file)
 
         #For each logical volume specified, initiate client and run rsync
         for volume in arguments.volumes:
             (ic_stdout, ic_stderr, ic_exit_code) = initiate_client(arguments.client, ssh_user, volume,lv_suffix)
             if ic_exit_code:
 
-                write_to_log("critical", "Error while initiating client", backupjob_log_file)
+                log_and_print(arguments.verbosity_level,"critical", "Error while initiating client", backupjob_log_file)
                 delete_lockfile(lock_file)
                 sys.exit(EXIT_CRITICAL)
             else:
 
 
-                write_to_log("info", "Client initiated successfully", backupjob_log_file)
-                write_to_log("info", ic_stdout, backupjob_log_file)
+                log_and_print(arguments.verbosity_level,"info", "Client initiated successfully", backupjob_log_file)
+                log_and_print(arguments.verbosity_level,"info", ic_stdout, backupjob_log_file)
                 # Rsync files
                 rsync_status = rsync_files(arguments.client, volume, lv_suffix, current_dataset)
                 if rsync_status:
 
-                    write_to_log("critical","Rsync failed for volume: "+volume+lv_suffix,backupjob_log_file)
+                    log_and_print(arguments.verbosity_level,"critical","Rsync failed for volume: "+volume+lv_suffix,backupjob_log_file)
                     (ec_stdout, ec_stderr, ec_exit_code) = end_client(arguments.client, ssh_user, volume,lv_suffix)
                     if ec_exit_code:
 
 
-                        write_to_log("critical","Unable to end_client for volume: "+volume+lv_suffix,backupjob_log_file)
-                        write_to_log("critical",str(ec_stderr),backupjob_log_file)
+                        log_and_print(arguments.verbosity_level,"critical","Unable to end_client for volume: "+volume+lv_suffix,backupjob_log_file)
+                        log_and_print(arguments.verbosity_level,"critical",str(ec_stderr),backupjob_log_file)
                     else:
 
 
-                        write_to_log("info","end_client successful for volume: "+volume+lv_suffix,backupjob_log_file)
-                        write_to_log("info",str(ec_stdout),backupjob_log_file)
+                        log_and_print(arguments.verbosity_level,"info","end_client successful for volume: "+volume+lv_suffix,backupjob_log_file)
+                        log_and_print(arguments.verbosity_level,"info",str(ec_stdout),backupjob_log_file)
                     delete_lockfile(lock_file)
                     sys.exit(EXIT_CRITICAL)
                 else:
 
-                    write_to_log("info","Rsync succeeded for volume: "+volume+lv_suffix,backupjob_log_file)
+                    log_and_print(arguments.verbosity_level,"info","Rsync succeeded for volume: "+volume+lv_suffix,backupjob_log_file)
                     (ec_stdout, ec_stderr, ec_exit_code) = end_client(arguments.client, ssh_user, volume,lv_suffix)
                     if ec_exit_code:
 
 
-                        write_to_log("critical","Unable to end_client for volume: "+volume+lv_suffix,backupjob_log_file)
-                        write_to_log("critical",str(ec_stderr),backupjob_log_file)
+                        log_and_print(arguments.verbosity_level,"critical","Unable to end_client for volume: "+volume+lv_suffix,backupjob_log_file)
+                        log_and_print(arguments.verbosity_level,"critical",str(ec_stderr),backupjob_log_file)
                     else:
 
 
-                        write_to_log("info","end_client successful for volume: "+volume+lv_suffix,backupjob_log_file)
-                        write_to_log("info",str(ec_stdout),backupjob_log_file)
+                        log_and_print(arguments.verbosity_level,"info","end_client successful for volume: "+volume+lv_suffix,backupjob_log_file)
+                        log_and_print(arguments.verbosity_level,"info",str(ec_stdout),backupjob_log_file)
 
 
 
 
-        write_to_log("info","BackupExecutor has run successfully! Exiting.",backupjob_log_file)
-        write_to_log("info","BackupExecutor has run successfully! Exiting.",main_log_file)
+        log_and_print(arguments.verbosity_level,"info","BackupExecutor has run successfully! Exiting.",backupjob_log_file)
+        log_and_print(arguments.verbosity_level,"info","BackupExecutor has run successfully! Exiting.",main_log_file)
         delete_lockfile(lock_file)
         sys.exit(EXIT_OK)
 
 
 def rsync_files(client, volume, lv_suffix, dataset):
-    write_to_log("info", "rsync_files function invoked with parameters", backupjob_log_file)
-    write_to_log("info", "client = "+client, backupjob_log_file)
-    write_to_log("info", "volume = "+volume, backupjob_log_file)
-    write_to_log("info", "lv_suffix = "+lv_suffix, backupjob_log_file)
-    write_to_log("info", "dataset = "+dataset, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "rsync_files function invoked with parameters", backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "client = "+client, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "volume = "+volume, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "lv_suffix = "+lv_suffix, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "dataset = "+dataset, backupjob_log_file)
     try:
         lv_name = volume.split("/")[3]
         lv_mount_path = client_snapshot_mount_path+"/"+lv_name+lv_suffix+"/" #We add a trailing slash to copy contents and not the directory itself
@@ -121,25 +121,25 @@ def rsync_files(client, volume, lv_suffix, dataset):
         new_dir = subprocess.run(['mkdir','-p',backup_dest_dir ])
         if new_dir.stderr:
 
-            write_to_log("critical","Unable to create directory: "+backup_dest_dir, backupjob_log_file)
-            write_to_log("critical",str(new_dir.stderr),backupjob_log_file)
+            log_and_print(arguments.verbosity_level,"critical","Unable to create directory: "+backup_dest_dir, backupjob_log_file)
+            log_and_print(arguments.verbosity_level,"critical",str(new_dir.stderr),backupjob_log_file)
             return 1 # 1 = error
         else:
 
-            write_to_log("info","New directory created successfully: "+backup_dest_dir, backupjob_log_file)
+            log_and_print(arguments.verbosity_level,"info","New directory created successfully: "+backup_dest_dir, backupjob_log_file)
             rsync_process = subprocess.run(['rsync', '-az', '--delete', '-e', 'ssh', 'root@'+client+':'+lv_mount_path, backup_dest_dir],
                                             encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if rsync_process.stderr:
 
-                write_to_log("critical",str(rsync_process.stderr),backupjob_log_file)
+                log_and_print(arguments.verbosity_level,"critical",str(rsync_process.stderr),backupjob_log_file)
                 return 1 # 1 = error
             else:
 
-                write_to_log("info",str(rsync_process.stdout),backupjob_log_file)
+                log_and_print(arguments.verbosity_level,"info",str(rsync_process.stdout),backupjob_log_file)
                 return 0 # 0 = OK
     except Exception as e:
 
-        write_to_log("critical", str(e), backupjob_log_file)
+        log_and_print(arguments.verbosity_level,"critical", str(e), backupjob_log_file)
         end_client(client,ssh_user,volume,lv_suffix)
         delete_lockfile(lock_file)
         sys.exit(EXIT_CRITICAL)
@@ -167,34 +167,34 @@ def create_dataset(root_dataset_name, backup_type):
 
     """
 
-    write_to_log("info", "create_dataset function invoked with parameters", backupjob_log_file)
-    write_to_log("info", "root_dataset_name = "+root_dataset_name, backupjob_log_file)
-    write_to_log("info", "backup_type = "+backup_type, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "create_dataset function invoked with parameters", backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "root_dataset_name = "+root_dataset_name, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "backup_type = "+backup_type, backupjob_log_file)
 
     #Get a list of all existing datasets under the specified root dataset
     datasets = subprocess.run(['zfs', 'list', '-t', 'filesystem', '-o', 'name', '-H', '-r', root_dataset_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if "dataset does not exist" in datasets.stderr:
-        write_to_log("critical", datasets.stderr, main_log_file)
+        log_and_print(arguments.verbosity_level,"critical", datasets.stderr, main_log_file)
         return 1,""
     elif datasets.stderr and ("dataset does not exist" not in datasets.stderr):
-        write_to_log("critical", datasets.stderr, backupjob_log_file)
+        log_and_print(arguments.verbosity_level,"critical", datasets.stderr, backupjob_log_file)
         return 1,""
     else:
         dataset_list = datasets.stdout.splitlines()[1:] #Remove 1st item from list, since it is the root backupset for the backup job
         if not dataset_list:
             #If dataset_list is empty there are no previous backups, and we will force a full backup
 
-            write_to_log("info","No previous backups. backup_type forced to 'full'", backupjob_log_file)
+            log_and_print(arguments.verbosity_level,"info","No previous backups. backup_type forced to 'full'", backupjob_log_file)
             backup_type = "full"
 
         if backup_type == "full":
             new_dataset_name = root_dataset_name +'/' + time_now + "_full"
             new_dataset = subprocess.run(['zfs', 'create','-p', new_dataset_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if new_dataset.stderr:
-                write_to_log("critical",new_dataset.stderr, backupjob_log_file)
+                log_and_print(arguments.verbosity_level,"critical",new_dataset.stderr, backupjob_log_file)
                 return 1,""
             else:
-                write_to_log("info", "New dataset created successfuly: " + new_dataset_name, backupjob_log_file)
+                log_and_print(arguments.verbosity_level,"info", "New dataset created successfuly: " + new_dataset_name, backupjob_log_file)
                 return 0,new_dataset_name
 
         elif backup_type == "diff":
@@ -209,25 +209,25 @@ def create_dataset(root_dataset_name, backup_type):
             last_full_backup = dataset_list_full[-1]
             returncode, new_dataset_name = snap_and_clone_dataset(last_full_backup,backup_type)
             if returncode:
-                write_to_log("critical", "Error while snapshoting and cloning dataset", backupjob_log_file)
+                log_and_print(arguments.verbosity_level,"critical", "Error while snapshoting and cloning dataset", backupjob_log_file)
                 return returncode,""
             else:
-                write_to_log("info", "Snaphot and clone successful", backupjob_log_file)
+                log_and_print(arguments.verbosity_level,"info", "Snaphot and clone successful", backupjob_log_file)
                 return returncode,new_dataset_name
 
         elif backup_type == "inc":
             last_backup = dataset_list[-1]
             returncode,new_dataset_name = snap_and_clone_dataset(last_backup,backup_type)
             if returncode:
-                write_to_log("critical", "Error while snapshoting and cloning dataset", backupjob_log_file)
+                log_and_print(arguments.verbosity_level,"critical", "Error while snapshoting and cloning dataset", backupjob_log_file)
                 return returncode,""
             else:
-                write_to_log("info", "Snaphot and clone successful", backupjob_log_file)
+                log_and_print(arguments.verbosity_level,"info", "Snaphot and clone successful", backupjob_log_file)
                 return returncode,new_dataset_name
 
         else:
             print ("You should not have been able to get here")
-            write_to_log("critical", "Backup type does not have a valid value", backupjob_log_file)
+            log_and_print(arguments.verbosity_level,"critical", "Backup type does not have a valid value", backupjob_log_file)
             sys.exit(EXIT_CRITICAL)
 
 def snap_and_clone_dataset(dataset_name,backup_type):
@@ -247,9 +247,9 @@ def snap_and_clone_dataset(dataset_name,backup_type):
 
     """
 
-    write_to_log("info", "snap_and_clone_dataset function invoked with parameters", backupjob_log_file)
-    write_to_log("info", "dataset_name = "+dataset_name, backupjob_log_file)
-    write_to_log("info", "backup_type = "+backup_type, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "snap_and_clone_dataset function invoked with parameters", backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "dataset_name = "+dataset_name, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "backup_type = "+backup_type, backupjob_log_file)
 
     root_dataset_name = dataset_name.split("/")[0]
     root_backup_dataset_name = dataset_name.split("/")[0]+"/"+dataset_name.split("/")[1]
@@ -260,17 +260,17 @@ def snap_and_clone_dataset(dataset_name,backup_type):
     #Take snapshot
     snap = subprocess.run(['zfs', 'snapshot', snapshot_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if snap.stderr:
-        write_to_log("critical", snap.stderr, backupjob_log_file)
+        log_and_print(arguments.verbosity_level,"critical", snap.stderr, backupjob_log_file)
         return 1,""
     else:
-        write_to_log("info", "Snapshot created: " +snapshot_name, backupjob_log_file)
+        log_and_print(arguments.verbosity_level,"info", "Snapshot created: " +snapshot_name, backupjob_log_file)
     #Make clone
     clone = subprocess.run(['zfs', 'clone', snapshot_name, clone_name],encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if clone.stderr:
-        write_to_log("critical", clone.stderr, backupjob_log_file)
+        log_and_print(arguments.verbosity_level,"critical", clone.stderr, backupjob_log_file)
         return 1,""
     else:
-        write_to_log("info", "Clone created: " +clone_name, backupjob_log_file)
+        log_and_print(arguments.verbosity_level,"info", "Clone created: " +clone_name, backupjob_log_file)
         return 0,clone_name
 
 
@@ -290,21 +290,21 @@ def initiate_client(client, username,lv_path,lv_suffix):
 
     """
 
-    write_to_log("info", "initiate_client function invoked with parameters", backupjob_log_file)
-    write_to_log("info", "client= "+client, backupjob_log_file)
-    write_to_log("info", "username = "+username, backupjob_log_file)
-    write_to_log("info", "lv_path = "+lv_path, backupjob_log_file)
-    write_to_log("info", "lv_suffix = "+lv_suffix, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "initiate_client function invoked with parameters", backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "client= "+client, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "username = "+username, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "lv_path = "+lv_path, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "lv_suffix = "+lv_suffix, backupjob_log_file)
 
     try:
         ssh = SSHClient()
         ssh.load_system_host_keys()
-        write_to_log("info", "Connecting to '"+client+"' via SSH as user '"+username+"'",backupjob_log_file)
+        log_and_print(arguments.verbosity_level,"info", "Connecting to '"+client+"' via SSH as user '"+username+"'",backupjob_log_file)
         ssh.connect(client, username = username)
     except Exception as e:
 
-        write_to_log("critical", "Unable to connect to client '"+client+"' via SSH",backupjob_log_file)
-        write_to_log("critical", str(e),backupjob_log_file)
+        log_and_print(arguments.verbosity_level,"critical", "Unable to connect to client '"+client+"' via SSH",backupjob_log_file)
+        log_and_print(arguments.verbosity_level,"critical", str(e),backupjob_log_file)
         delete_lockfile(lock_file)
         ssh.close()
         sys.exit(EXIT_CRITICAL)
@@ -317,16 +317,16 @@ def initiate_client(client, username,lv_path,lv_suffix):
         if exit_code:
 
 
-            write_to_log("critical","Stderr output:" +str(stderr), backupjob_log_file)
-            write_to_log("critical","Stdout output:" +str(stdout), backupjob_log_file)
+            log_and_print(arguments.verbosity_level,"critical","Stderr output:" +str(stderr), backupjob_log_file)
+            log_and_print(arguments.verbosity_level,"critical","Stdout output:" +str(stdout), backupjob_log_file)
         else:
-            write_to_log("info",str(stdout),backupjob_log_file)
+            log_and_print(arguments.verbosity_level,"info",str(stdout),backupjob_log_file)
         ssh.close()
         return (stdout, stderr, exit_code)
 
     except Exepction as e:
 
-        write_to_log("critical", str(e), backupjob_log_file)
+        log_and_print(arguments.verbosity_level,"critical", str(e), backupjob_log_file)
         ssh.close()
         delete_lockfile(lock_file)
         sys.exit(EXIT_CRITICAL)
@@ -349,21 +349,21 @@ def end_client(client, username,lv_path,lv_suffix):
 
     """
 
-    write_to_log("info", "end_client function invoked with parameters", backupjob_log_file)
-    write_to_log("info", "client= "+client, backupjob_log_file)
-    write_to_log("info", "username = "+username, backupjob_log_file)
-    write_to_log("info", "lv_path = "+lv_path, backupjob_log_file)
-    write_to_log("info", "lv_suffix = "+lv_suffix, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "end_client function invoked with parameters", backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "client= "+client, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "username = "+username, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "lv_path = "+lv_path, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "lv_suffix = "+lv_suffix, backupjob_log_file)
 
     try:
         ssh = SSHClient()
         ssh.load_system_host_keys()
-        write_to_log("info", "Connecting to '"+client+"' via SSH as user '"+username+"'",backupjob_log_file)
+        log_and_print(arguments.verbosity_level,"info", "Connecting to '"+client+"' via SSH as user '"+username+"'",backupjob_log_file)
         ssh.connect(client, username = username)
     except Exception as e:
 
-        write_to_log("critical", "Unable to connect to client '"+client+"' via SSH",backupjob_log_file)
-        write_to_log("critical", str(e),backupjob_log_file)
+        log_and_print(arguments.verbosity_level,"critical", "Unable to connect to client '"+client+"' via SSH",backupjob_log_file)
+        log_and_print(arguments.verbosity_level,"critical", str(e),backupjob_log_file)
         delete_lockfile(lock_file)
         ssh.close()
         sys.exit(EXIT_CRITICAL)
@@ -375,15 +375,15 @@ def end_client(client, username,lv_path,lv_suffix):
         exit_code = ssh_stdout.channel.recv_exit_status()
         if exit_code:
 
-            write_to_log("critical", str(stderr), backupjob_log_file)
+            log_and_print(arguments.verbosity_level,"critical", str(stderr), backupjob_log_file)
         else:
-            write_to_log("info",str(stdout),backupjob_log_file)
+            log_and_print(arguments.verbosity_level,"info",str(stdout),backupjob_log_file)
         ssh.close()
         return (stdout, stderr, exit_code)
 
     except Exepction as e:
 
-        write_to_log("critical", str(e), backupjob_log_file)
+        log_and_print(arguments.verbosity_level,"critical", str(e), backupjob_log_file)
         ssh.close()
         delete_lockfile(lock_file)
         sys.exit(EXIT_CRITICAL)
@@ -403,8 +403,8 @@ def check_last_backup_status(root_dataset_name):
 
     """
 
-    write_to_log("info", "check_last_backup_status function invoked with parameters", backupjob_log_file)
-    write_to_log("info", "root_dataset_name= "+root_dataset_name, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "check_last_backup_status function invoked with parameters", backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "root_dataset_name= "+root_dataset_name, backupjob_log_file)
 
     #status_history = []
     last_successful_date = None
