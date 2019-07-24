@@ -10,6 +10,7 @@ SNAPSHOT_SIZE = 512 #In megabytes
 SNAPSHOT_MOUNT_PATH = "/mnt/rsyncbackup"#DONT use a trailing slash
 LOCK_FILE_PATH = "/etc/zfsync/lock" #Full path to lock file
 (EXIT_OK, EXIT_WARNING, EXIT_CRITICAL, EXIT_UNKNOWN) = (0,1,2,3)
+LOG_FILE_PATH = "/etc/zfsync/client_backup.log"
 
 arg_parser = argparse.ArgumentParser(description='Client side script for initializing and ending backups.')
 arg_parser.add_argument("action", choices=['initiate-backup', 'end-backup'], help="Specify weather to initiate or end backup")
@@ -19,6 +20,7 @@ arguments = arg_parser.parse_args()
 
 def main():
     if check_lockfile(LOCK_FILE_PATH):
+        write_to_log("critical","Client lock file is already present. Exiting!",LOG_FILE_PATH)
         print("Client lock file is already present. Exiting!")
         sys.exit(EXIT_WARNING)
     else:
@@ -36,6 +38,7 @@ def main():
                 sys.exit(EXIT_OK)
         else:
             print("CRITICAL! You are not supposed to be able to end up here")
+            write_to_log("critical","This should not be possible!",LOG_FILE_PATH)
             delete_lockfile(LOCK_FILE_PATH)
             sys.exit(EXIT_CRITICAL)
 
@@ -61,6 +64,7 @@ def create_lvm_snapshot(lv_path,snap_suffix):
     #Check that provided path is valid and pointing to a block device
     if not verify_lv_path(lv_path):
         delete_lockfile(LOCK_FILE_PATH)
+        write_to_log("critical","Logical volume path is not valid. Exiting!",LOG_FILE_PATH)
         print("Logical volume path is not valid")
         sys.exit(EXIT_CRITICAL)
 
@@ -72,6 +76,8 @@ def create_lvm_snapshot(lv_path,snap_suffix):
     space_in_vg = subprocess.run(['vgs', vg_name, '--noheadings', '--units', 'm', '--nosuffix'], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if space_in_vg.stderr:
         print(space_in_vg.stderr)
+        write_to_log("critical","Error while checking free space in volume group!",LOG_FILE_PATH)
+        write_to_log("critical",space_in_vg.stderr,LOG_FILE_PATH)
         delete_lockfile(LOCK_FILE_PATH)
         sys.exit(EXIT_CRITICAL)
     space_in_vg = space_in_vg.stdout.split()[6]
@@ -79,7 +85,7 @@ def create_lvm_snapshot(lv_path,snap_suffix):
 
     if SNAPSHOT_SIZE >= space_in_vg:
         print("CRITICAL! Not enough free space in volume group. A snapshot will not be created")
-        #Add logging
+        write_to_log("critical","Not enough free space in volume group. A snapshot will not be created",LOG_FILE_PATH)
         delete_lockfile(LOCK_FILE_PATH)
         sys.exit(EXIT_CRITICAL)
 
@@ -87,36 +93,47 @@ def create_lvm_snapshot(lv_path,snap_suffix):
     if create_snap.returncode:
         print("Error while creating snapshot")
         print(create_snap.stderr)
+        write_to_log("critical","Error while creating snapshot",LOG_FILE_PATH)
+        write_to_log("critical",create_snap.stderr,LOG_FILE_PATH)
         delete_lockfile(LOCK_FILE_PATH)
         sys.exit(EXIT_CRITICAL)
     else:
         print(create_snap.stdout)
+        write_to_log("info",create_snap.stdout,LOG_FILE_PATH)
 
     make_mnt_dir = subprocess.run(['mkdir','-p',SNAPSHOT_MOUNT_PATH+"/"+lv_name+snap_suffix],encoding='utf-8', stderr=subprocess.PIPE)
     if make_mnt_dir.stderr:
         print("CRITICAL! Unable to create directory to mount snapshot")
+        write_to_log("critical","Unable to create directory to mount snapshot",LOG_FILE_PATH)
         if delete_lv_snapshot(lv_path,snap_suffix):
-            print("Unable to clean up")
+            print("Unable to clean up snapshot")
+            write_to_log("critical","Unable to clean up snapshot",LOG_FILE_PATH)
             #Leave lock file since cleanup was not successfull
         else:
             print("Cleanup successful")
+            write_to_log("info","Clean up of snapshot was successful",LOG_FILE_PATH)
             delete_lockfile(LOCK_FILE_PATH)
         sys.exit(EXIT_CRITICAL)
 
     mount_snap = subprocess.run(['mount','/dev/'+vg_name+'/'+lv_name+snap_suffix,SNAPSHOT_MOUNT_PATH+"/"+lv_name+snap_suffix], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if mount_snap.returncode:
+        print("Error while trying to mount snapshot")
         print(mount_snap.stderr)
-        print("Cleaning up the snapshot")
+        write_to_log("critical","Error while trying to mount snapshot",LOG_FILE_PATH)
+        write_to_log("critical",mount_snap.stderr,LOG_FILE_PATH)
         if delete_lv_snapshot(lv_path,snap_suffix):
             print("Unable to clean up")
+            write_to_log("critical","Unable to clean up snapshot",LOG_FILE_PATH)
             #Leave lock file since cleanup was not successfull
         else:
             print("Cleanup successful")
+            write_to_log("info","Clean up of snapshot was successful",LOG_FILE_PATH)
             delete_lockfile(LOCK_FILE_PATH)
         sys.exit(EXIT_CRITICAL)
     else:
         print(mount_snap.stdout)
         print("Snapshot mounted successfully!")
+        write_to_log("info","Snapshot mounted successfully!",LOG_FILE_PATH)
 
 # Need to add a check of the path to see that it is valid
 def delete_lv_snapshot(lv_path,snap_suffix):
@@ -153,12 +170,17 @@ def delete_lv_snapshot(lv_path,snap_suffix):
         if proc.returncode:
             print("Critical! Error during unmounting of snapshot: "+snap_mount_path)
             print(proc.stderr)
+            write_to_log("critical","Error during unmounting of snapshot: "+snap_mount_path,LOG_FILE_PATH)
+            write_to_log("critical",proc.stderr,LOG_FILE_PATH)
             sys.exit(EXIT_CRITICAL)
         else:
-            print("Snapshot unmounted successfully!")
+            print("Snapshot unmounted successfully")
             print(proc.stdout)
+            write_to_log("info","Snapshot unmounted successfully",LOG_FILE_PATH)
+            write_to_log("info",proc.stdout,LOG_FILE_PATH)
     else:
         print("Warning! Specified snapshot is not mounted")
+        write_to_log("warning","Specified snapshot is not mounted",LOG_FILE_PATH)
         status += 1
 
     ##### Delete mount folder #####
@@ -168,12 +190,17 @@ def delete_lv_snapshot(lv_path,snap_suffix):
         if proc.returncode:
             print("Error while trying to remove snapshot mount folder: "+snap_mount_path)
             print(proc.stderr)
+            write_to_log("critical","Error while trying to remove snapshot mount folder: "+snap_mount_path,LOG_FILE_PATH)
+            write_to_log("critical",proc.stderr,LOG_FILE_PATH)
             sys.exit(EXIT_CRITICAL)
         else:
             print(proc.stdout)
             print("Snapshot mount folder deleted successfully!")
+            write_to_log("info","Snapshot mount folder deleted successfully!",LOG_FILE_PATH)
+            write_to_log("info",proc.stdout,LOG_FILE_PATH)
     else:
         print("Warning! Snapshot mount path was not found: "+snap_mount_path)
+        write_to_log("warning","Snapshot mount path was not found: "+snap_mount_path,LOG_FILE_PATH)
         status += 1
 
     ##### Remove snapshot #####
@@ -182,12 +209,17 @@ def delete_lv_snapshot(lv_path,snap_suffix):
         if proc.returncode:
             print("Error while trying to remove logical volume snapshot: "+snapshot_path)
             print(proc.stderr)
+            write_to_log("critical","Error while trying to remove logical volume snapshot: "+snapshot_path,LOG_FILE_PATH)
+            write_to_log("critical",proc.stderr,LOG_FILE_PATH)
             sys.exit(EXIT_CRITICAL)
         else:
             print("Logical volume snapshot removed successfully!")
             print(proc.stdout)
+            write_to_log("info","Logical volume snapshot removed successfully!",LOG_FILE_PATH)
+            write_to_log("info",proc.stdout,LOG_FILE_PATH)
     else:
         print("Warning! Could not find the specified snapshot: "+lv_path+snap_suffix)
+        write_to_log("warning","Could not find the specified snapshot: "+lv_path+snap_suffix,LOG_FILE_PATH)
         status += 1
 
     #Check how many of the tasks failed
@@ -214,13 +246,16 @@ def verify_lv_path(lv_path):
     if os.path.exists(lv_path):
         mode = os.stat(lv_path).st_mode
         if stat.S_ISBLK(mode):
+            write_to_log("info","The path exists and is a block device: "+lv_path,LOG_FILE_PATH)
             return True
         else:
             print("The path exists but is not pointing to a logical volume")
+            write_to_log("critical","The path exists but is not pointing to a logical volume: "+lv_path,LOG_FILE_PATH)
             return False
     else:
         print("The path does not exist:")
         print(lv_path)
+        write_to_log("critical","The path does not exist: "+lv_path,LOG_FILE_PATH)
         return False
 
 
