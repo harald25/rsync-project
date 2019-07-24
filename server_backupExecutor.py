@@ -19,6 +19,7 @@ lv_suffix = "_rsyncbackup_"+time_now
 lock_file = "/"+arguments.dataset_name+"/lock"
 backupjob_log_file = "/"+arguments.dataset_name+"/"+time_now+"_"+arguments.backup_type+".log"
 main_log_file = "/backup/backupexecutor.log"
+client_snapshot_mount_path = "/mnt/rsyncbackup"
 
 def main():
     write_to_log("info", "Starting backupjob", main_log_file)
@@ -103,9 +104,11 @@ def main():
 
 
 def rsync_files(client, volume, lv_suffix, dataset):
+    lv_name = volume.split("/")[3]
+    lv_mount_path = client_snapshot_mount_path+"/"+lv_name+lv_suffix+"/" #We add a trailing slash to copy contents and not the directory itself
     try:
         lv_snapshot_name = volume+lv_suffix
-        rsync_process = subprocess.run(['rsync', '-az', '--delete', '-e', 'ssh', 'root@'+client+':'+lv_snapshot_name, '/'+dataset],
+        rsync_process = subprocess.run(['rsync', '-az', '--delete', '-e', 'ssh', 'root@'+client+':'+lv_mount_path, '/'+dataset],
                                         encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if rsync_process.stderr:
             print(rsync_process.stderr)
