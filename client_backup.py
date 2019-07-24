@@ -42,14 +42,14 @@ def main():
 # Need to add a check to see if there is enough available space in volume group for snapshot
 def create_lvm_snapshot(lv_path,snap_suffix):
     """
-    This function creates an LVM snapshot and mounts it. The snapshot is mounted
-    in a subfolder of SNAPSHOT_MOUNT_PATH. Before a snapshot is created the path
-    is checked to see that it points to an existing block device.
+    This function creates a logical volume snapshot and mounts it. The snapshot
+    is mounted in a subfolder of SNAPSHOT_MOUNT_PATH. Before a snapshot is created
+    the path is checked to see that it points to an existing block device.
     The function takes two parameters: lv_path and snap_suffix
 
     Parameters
     ----------
-    lv_path :      The path to the logical volume to make snapshot of
+    lv_path :       The path of the logical volume to make snapshot of.
     snap_suffix :   A suffix that will be appended to the name of the snapshot.
                     This will need to be generated on the backup server, and
                     provided as a parameter when the script is called
@@ -109,7 +109,7 @@ def delete_lv_snapshot(lv_path,snap_suffix):
     """
     This function unmounts a logical volume snapshot, and deletes the snapshot.
     lv_path and snap_suffix are used to find the right mount path and path to
-    snapshot. Before a snapshot is delted the path is checked to see that it
+    snapshot. Before a snapshot is deleted the path is checked to see that it
     points to an existing block device.
     The function takes two parameters: lv_path and snap_suffix
 
@@ -171,10 +171,10 @@ def verify_lv_path(lv_path):
         if stat.S_ISBLK(mode):
             return True
         else:
-            print("The path is not pointing to a logical volume")
+            print("The path exists but is not pointing to a logical volume")
             return False
     else:
-        print("The path to logical volume does not exist:")
+        print("The path does not exist:")
         print(lv_path)
         return False
 
