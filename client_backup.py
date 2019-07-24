@@ -227,10 +227,10 @@ def verify_lv_path(lv_path):
             log_and_print(arguments.verbosity_level,"info","The path exists and is a block device: "+lv_path,LOG_FILE_PATH)
             return True
         else:
-            log_and_print(arguments.verbosity_level,"critical","The path exists but is not pointing to a logical volume: "+lv_path,LOG_FILE_PATH)
+            log_and_print(arguments.verbosity_level,"warning","The path exists but is not pointing to a logical volume: "+lv_path,LOG_FILE_PATH)
             return False
     else:
-        log_and_print(arguments.verbosity_level,"critical","The path does not exist: "+lv_path,LOG_FILE_PATH)
+        log_and_print(arguments.verbosity_level,"warning","The path does not exist: "+lv_path,LOG_FILE_PATH)
         return False
 
 
