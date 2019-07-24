@@ -104,19 +104,20 @@ def main():
 
 def rsync_files(client, volume, lv_suffix, dataset):
     try:
+        # There is an error here on purpose
         lv_snapshot_name = volume+"_"+lv_suffix
         rsync_process = subprocess.run(['rsync', '-az', '--delete', '-e', 'ssh', 'root@'+client+':'+lv_snapshot_name, '/'+dataset],
                                         encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if rsync_process.stderr:
             print(rsync_process.stderr)
             write_to_log("critical",str(rsync_process.stderr),backupjob_log_file)
-            return False
+            return 1 # 1 = error
         else:
             print("Rsync complete")
             print(rsync_process.stdout)
             write_to_log("info","Rsync complete",backupjob_log_file)
             write_to_log("info",str(rsync_process.stdout),backupjob_log_file)
-            return True
+            return 0 # 0 = OK
     except Exception as e:
         print(e)
         write_to_log("critical", str(e), backupjob_log_file)
