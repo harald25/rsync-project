@@ -309,7 +309,7 @@ def initiate_client(client, username,lv_path,lv_suffix):
         sys.exit(EXIT_CRITICAL)
 
     try:
-        (ssh_stdin, ssh_stdout, ssh_stderr) = ssh.exec_command("/root/rsync-project/client_backup.py initiate-backup -l " + lv_path + " -s "+lv_suffix)
+        (ssh_stdin, ssh_stdout, ssh_stderr) = ssh.exec_command("/root/rsync-project/client_backup.py initiate-backup -l " + lv_path + " -s "+lv_suffix +" -v "+arguments.verbosity_level)
         stdout = ssh_stdout.readlines()
         stderr = ssh_stderr.readlines()
         exit_code = ssh_stdout.channel.recv_exit_status()
@@ -368,7 +368,7 @@ def end_client(client, username,lv_path,lv_suffix):
         sys.exit(EXIT_CRITICAL)
 
     try:
-        (ssh_stdin, ssh_stdout, ssh_stderr) = ssh.exec_command("/root/rsync-project/client_backup.py end-backup -l " + lv_path + " -s "+lv_suffix)
+        (ssh_stdin, ssh_stdout, ssh_stderr) = ssh.exec_command("/root/rsync-project/client_backup.py end-backup -l " + lv_path + " -s "+lv_suffix+" -v "+arguments.verbosity_level)
         stdout = ssh_stdout.readlines()
         stderr = ssh_stderr.readlines()
         exit_code = ssh_stdout.channel.recv_exit_status()

@@ -16,7 +16,7 @@ arg_parser = argparse.ArgumentParser(description='Client side script for initial
 arg_parser.add_argument("action", choices=['initiate-backup', 'end-backup'], help="Specify weather to initiate or end backup")
 arg_parser.add_argument('-l','--lv-path', help='Path to the logical volume', required=True)
 arg_parser.add_argument('-s','--snap-suffix', help='The name suffix of snaphot to be created (if initiating), or deleted (if ending)', required=True)
-arg_parser.add_argument('-v','--verbosity-level',nargs='?', const=2, type=int, help='Level of verbosity for logging and printing. 0 = no logging/printing, 1 = errors, 2 = warning + error, 3 = warning+error+info')
+arg_parser.add_argument('-v','--verbosity-level',nargs='?', const=3, default=3, type=int, help='Level of verbosity for logging and printing. 0 = no logging/printing, 1 = errors, 2 = warning + error, 3 = warning+error+info')
 arguments = arg_parser.parse_args()
 
 def main():
