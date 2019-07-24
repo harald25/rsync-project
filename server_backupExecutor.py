@@ -55,8 +55,7 @@ def main():
         for volume in arguments.volumes:
             (ic_stdout, ic_stderr, ic_exit_code) = initiate_client(arguments.client, ssh_user, volume,lv_suffix)
             if ic_exit_code:
-                print("Error while initiating client:")
-                print(ic_stderr)
+                print("Error while initiating client")
                 delete_lockfile(lock_file)
                 sys.exit(EXIT_CRITICAL)
             else:
@@ -111,7 +110,7 @@ def rsync_files(client, volume, lv_suffix, dataset):
         lv_snapshot_name = volume+lv_suffix
         backup_dest_dir = "/"+dataset+"/"+lv_name
 
-        new_dir = subprocess.run(['mkdir',backup_dest_dir ])
+        new_dir = subprocess.run(['mkdir','-p',backup_dest_dir ])
         if new_dir.stderr:
             print(new_dir.stderr)
             write_to_log("critical","Unable to create directory: "+backup_dest_dir, backupjob_log_file)
