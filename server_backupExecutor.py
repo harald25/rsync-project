@@ -62,7 +62,7 @@ def main():
 
 
                 log_and_print(arguments.verbosity_level,"info", "Client initiated successfully", backupjob_log_file)
-                log_and_print(arguments.verbosity_level,"info", ic_stdout, backupjob_log_file)
+                log_and_print(arguments.verbosity_level,"info", str(ic_stdout), backupjob_log_file)
                 # Rsync files
                 rsync_status = rsync_files(arguments.client, volume, lv_suffix, current_dataset)
                 if rsync_status:
