@@ -309,7 +309,7 @@ def initiate_client(client, username,lv_path,lv_suffix):
         sys.exit(EXIT_CRITICAL)
 
     try:
-        (ssh_stdin, ssh_stdout, ssh_stderr) = ssh.exec_command("/root/rsync-project/client_backup.py initiate-backup -l " + lv_path + " -s "+lv_suffix +" -v "+arguments.verbosity_level)
+        (ssh_stdin, ssh_stdout, ssh_stderr) = ssh.exec_command("/root/rsync-project/client_backup.py initiate-backup -l " + lv_path + " -s "+lv_suffix +" -v "+str(arguments.verbosity_level))
         stdout = ssh_stdout.readlines()
         stderr = ssh_stderr.readlines()
         exit_code = ssh_stdout.channel.recv_exit_status()
@@ -323,8 +323,9 @@ def initiate_client(client, username,lv_path,lv_suffix):
         ssh.close()
         return (stdout, stderr, exit_code)
 
-    except Exepction as e:
+    except Exception as e:
 
+        log_and_print(arguments.verbosity_level,"Critical","Unable to initiate client", backupjob_log_file)
         log_and_print(arguments.verbosity_level,"critical", str(e), backupjob_log_file)
         ssh.close()
         delete_lockfile(lock_file)

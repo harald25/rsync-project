@@ -4,10 +4,17 @@ Will be tested on RHEL 6 and 7 for clients. Testing other OSes for the server is
 
 ## Dependencies:
 
-###### Dependencies for both client and server
+###### Centos7 clients/agents
 
     yum install -y https://centos7.iuscommunity.org/ius-release.rpm
     yum install -y python36u python36u-libs python36u-devel python36u-pip
+
+###### Oracle Linux 6 clients/agents:
+    yum install oracle-softwarecollection-release-el6
+    yum -y install yum-utils
+    yum-config-manager --enable ol6_software_collections
+    yum install rh-python36 scl-utils
+    scl enable rh-python36 bash
 
 ###### Server dependencies
 
@@ -19,6 +26,8 @@ SSH keys must be generated on backup server and copied to clients
 
     ssh-keygen
     ssh-copy-id root@clientmachine
+
+The shebang must be edited to reflect the python binary installed on your system
 
 
 ## To-do:
