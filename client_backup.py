@@ -89,7 +89,7 @@ def create_lv_snapshot(lv_path,snap_suffix):
         delete_lockfile(LOCK_FILE_PATH)
         sys.exit(EXIT_CRITICAL)
 
-    create_snap = subprocess.run(['lvcreate', '-L'+str(SNAPSHOT_SIZE)+'M', '-s', '-n', lv_name+snap_suffix, lv_path], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    create_snap = subprocess.run(['lvcreate','-pr', '-L'+str(SNAPSHOT_SIZE)+'M', '-s', '-n', lv_name+snap_suffix, lv_path], encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if create_snap.returncode:
         log_and_print(arguments.verbosity_level,"critical","Error while creating snapshot",LOG_FILE_PATH)
         log_and_print(arguments.verbosity_level,"critical",create_snap.stderr,LOG_FILE_PATH)
