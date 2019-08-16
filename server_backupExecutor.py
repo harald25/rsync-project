@@ -126,6 +126,7 @@ def rsync_files(client, volume, lv_suffix, dataset):
         else:
 
             log_and_print(arguments.verbosity_level,"info","New directory created successfully: "+backup_dest_dir, backupjob_log_file)
+            log_and_print(arguments.verbosity_level,"info","Starting rsync", backupjob_log_file)
             rsync_start_time = time.time()
             rsync_process = subprocess.run(['rsync', '-az', '--delete', '-e', 'ssh', 'root@'+client+':'+lv_mount_path, backup_dest_dir],
                                             encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
