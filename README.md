@@ -20,6 +20,7 @@ Will be tested on RHEL 6 and 7 for clients. Testing other OSes for the server is
 
     /usr/bin/pip3.6 install paramiko
     zfs must be installed and configured, and a backup set called "backup" must be created
+    It is recommended to enable compression on the zpool level in zfs, so that all subsequently created datasets have compression enabled
 
 ## Preparations:
 SSH keys must be generated on backup server and copied to clients

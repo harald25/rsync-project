@@ -1,6 +1,6 @@
 #! /usr/bin/env python3.6
 
-import subprocess, os.path, paramiko, sys, argparse
+import subprocess, os.path, paramiko, sys, argparse, time
 from datetime import datetime
 from paramiko import SSHClient
 from shared_functions import *
@@ -106,7 +106,7 @@ def main():
 
 
 def rsync_files(client, volume, lv_suffix, dataset):
-    log_and_print(arguments.verbosity_level,"info", "rsync_files function invoked with parameters", backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "rsync_files function invoked with parameters:", backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "client = "+client, backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "volume = "+volume, backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "lv_suffix = "+lv_suffix, backupjob_log_file)
@@ -126,8 +126,11 @@ def rsync_files(client, volume, lv_suffix, dataset):
         else:
 
             log_and_print(arguments.verbosity_level,"info","New directory created successfully: "+backup_dest_dir, backupjob_log_file)
+            rsync_start_time = time.time()
             rsync_process = subprocess.run(['rsync', '-az', '--delete', '-e', 'ssh', 'root@'+client+':'+lv_mount_path, backup_dest_dir],
                                             encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            rsync_execution_time = time.time() - rsync_start_time
+            log_and_print(arguments.verbosity_level,"info","Rsync finished executing in: "+str(rsync_execution_time)+" seconds", backupjob_log_file)
             if rsync_process.stderr:
 
                 log_and_print(arguments.verbosity_level,"critical",str(rsync_process.stderr),backupjob_log_file)
@@ -166,7 +169,7 @@ def create_dataset(root_dataset_name, backup_type):
 
     """
 
-    log_and_print(arguments.verbosity_level,"info", "create_dataset function invoked with parameters", backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "create_dataset function invoked with parameters:", backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "root_dataset_name = "+root_dataset_name, backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "backup_type = "+backup_type, backupjob_log_file)
 
@@ -246,7 +249,7 @@ def snap_and_clone_dataset(dataset_name,backup_type):
 
     """
 
-    log_and_print(arguments.verbosity_level,"info", "snap_and_clone_dataset function invoked with parameters", backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "snap_and_clone_dataset function invoked with parameters:", backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "dataset_name = "+dataset_name, backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "backup_type = "+backup_type, backupjob_log_file)
 
@@ -289,7 +292,7 @@ def initiate_client(client, username,lv_path,lv_suffix):
 
     """
 
-    log_and_print(arguments.verbosity_level,"info", "initiate_client function invoked with parameters", backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "initiate_client function invoked with parameters:", backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "client= "+client, backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "username = "+username, backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "lv_path = "+lv_path, backupjob_log_file)
@@ -349,7 +352,7 @@ def end_client(client, username,lv_path,lv_suffix):
 
     """
 
-    log_and_print(arguments.verbosity_level,"info", "end_client function invoked with parameters", backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "end_client function invoked with parameters:", backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "client= "+client, backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "username = "+username, backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "lv_path = "+lv_path, backupjob_log_file)
@@ -403,7 +406,7 @@ def check_last_backup_status(root_dataset_name):
 
     """
 
-    log_and_print(arguments.verbosity_level,"info", "check_last_backup_status function invoked with parameters", backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "check_last_backup_status function invoked with parameters:", backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "root_dataset_name= "+root_dataset_name, backupjob_log_file)
 
     #status_history = []
