@@ -369,7 +369,7 @@ def end_client(client, username,lv_path,lv_suffix):
         sys.exit(EXIT_CRITICAL)
 
     try:
-        (ssh_stdin, ssh_stdout, ssh_stderr) = ssh.exec_command("/opt/zfsync/client_backup.py end-backup -l " + lv_path + " -s "+lv_suffix+" -v "+arguments.verbosity_level)
+        (ssh_stdin, ssh_stdout, ssh_stderr) = ssh.exec_command("/opt/zfsync/client_backup.py end-backup -l " + lv_path + " -s "+lv_suffix+" -v "+str(arguments.verbosity_level))
         stdout = ssh_stdout.readlines()
         stderr = ssh_stderr.readlines()
         exit_code = ssh_stdout.channel.recv_exit_status()
