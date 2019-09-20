@@ -16,3 +16,4 @@ conf.py
 index.rst
 make.bat
 Makefile
+*.sh
