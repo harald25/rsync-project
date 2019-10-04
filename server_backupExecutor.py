@@ -20,7 +20,7 @@ lv_suffix = "_rsyncbackup_"+time_now
 lock_file = "/"+arguments.dataset_name+"/lock"
 backupjob_log_file = "/"+arguments.dataset_name+"/"+time_now+"_"+arguments.backup_type+".log"
 main_log_file = "/backup/backupexecutor.log"
-client_snapshot_mount_path = "/mnt/rsyncbackup"
+client_snapshot_mount_path = "/backup/rsyncbackup"
 ssh_user = "root"
 
 def main():
@@ -111,15 +111,26 @@ def rsync_files(client, volume, lv_suffix, dataset):
     log_and_print(arguments.verbosity_level,"info", "volume = "+volume, backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "lv_suffix = "+lv_suffix, backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "dataset = "+dataset, backupjob_log_file)
+
+    rsync_returncode = None
+    def run_rsync_and_yield(cmd):
+        rsync_process = subprocess.Popen(cmd,encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+        for stdout_line in iter(rsync_process.stdout.readline, ""):
+            yield stdout_line
+        rsync_process.stdout.close()
+        rsync_returncode = rsync_process.wait()
+
     try:
         lv_name = volume.split("/")[3]
         lv_mount_path = client_snapshot_mount_path+"/"+lv_name+lv_suffix+"/" #We add a trailing slash to copy contents and not the directory itself
         lv_snapshot_name = volume+lv_suffix
         backup_dest_dir = "/"+dataset+"/"+lv_name
-
+        rsync_command = ['rsync', '-az', '--delete', '--devices', '--specials',
+                        '--progress','--sockopts=SO_SNDBUF=16777216,SO_RCVBUF=16777216',
+                        'rsync://'+client+':12000'+lv_mount_path,
+                        backup_dest_dir]
         new_dir = subprocess.run(['mkdir','-p',backup_dest_dir ])
         if new_dir.stderr:
-
             log_and_print(arguments.verbosity_level,"critical","Unable to create directory: "+backup_dest_dir, backupjob_log_file)
             log_and_print(arguments.verbosity_level,"critical",str(new_dir.stderr),backupjob_log_file)
             return 1 # 1 = error
@@ -128,18 +139,24 @@ def rsync_files(client, volume, lv_suffix, dataset):
             log_and_print(arguments.verbosity_level,"info","New directory created successfully: "+backup_dest_dir, backupjob_log_file)
             log_and_print(arguments.verbosity_level,"info","Starting rsync", backupjob_log_file)
             rsync_start_time = time.time()
-            rsync_process = subprocess.run(['rsync', '-az', '--delete', '--devices', '--specials', 'rsync://'+client+':12000'+lv_mount_path, backup_dest_dir],
-                                            encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            for output in run_rsync_and_yield(rsync_command):
+                print(output, end="")
             rsync_execution_time = time.time() - rsync_start_time
             log_and_print(arguments.verbosity_level,"info","Rsync finished executing in: "+str(rsync_execution_time)+" seconds", backupjob_log_file)
-            if rsync_process.stderr:
 
-                log_and_print(arguments.verbosity_level,"critical",str(rsync_process.stderr),backupjob_log_file)
+            if rsync_returncode == None:
+                log_and_print(arguments.verbosity_level,"critical",str("Unhandled error!"),backupjob_log_file)
                 return 1 # 1 = error
-            else:
-
-                log_and_print(arguments.verbosity_level,"info",str(rsync_process.stdout),backupjob_log_file)
+            elif rsync_returncode == 0:
+                log_and_print(arguments.verbosity_level,"info",str("Rsync finished successfully"),backupjob_log_file)
                 return 0 # 0 = OK
+            else:
+                log_and_print(arguments.verbosity_level,"critical","Rsync exited with an error",backupjob_log_file)
+                return 1 # 1 = error
+
+    except subprocess.SubprocessError as e:
+        print(e.cmd)
+
     except Exception as e:
 
         log_and_print(arguments.verbosity_level,"critical", str(e), backupjob_log_file)
