@@ -20,7 +20,7 @@ lv_suffix = "_rsyncbackup_"+time_now
 lock_file = "/"+arguments.dataset_name+"/lock"
 backupjob_log_file = "/"+arguments.dataset_name+"/"+time_now+"_"+arguments.backup_type+".log"
 main_log_file = "/backup/backupexecutor.log"
-client_snapshot_mount_path = "/backup/rsyncbackup"
+client_snapshot_mount_path = "/mnt/rsyncbackup"
 ssh_user = "root"
 
 def main():
@@ -125,11 +125,9 @@ def rsync_files(client, volume, lv_suffix, dataset):
         lv_mount_path = client_snapshot_mount_path+"/"+lv_name+lv_suffix+"/" #We add a trailing slash to copy contents and not the directory itself
         lv_snapshot_name = volume+lv_suffix
         backup_dest_dir = "/"+dataset+"/"+lv_name
-        rsync_command = ['rsync', '-az', '--delete', '--devices', '--specials',
-                        '--progress','--sockopts=SO_SNDBUF=16777216,SO_RCVBUF=16777216',
-                        'rsync://'+client+':12000'+lv_mount_path,
-                        backup_dest_dir]
+        rsync_command = ['rsync', '--progress', '--stats', '-aAXz', '--delete', '-e', 'ssh', 'root@'+client+':'+lv_mount_path, backup_dest_dir]
         new_dir = subprocess.run(['mkdir','-p',backup_dest_dir ])
+
         if new_dir.stderr:
             log_and_print(arguments.verbosity_level,"critical","Unable to create directory: "+backup_dest_dir, backupjob_log_file)
             log_and_print(arguments.verbosity_level,"critical",str(new_dir.stderr),backupjob_log_file)
