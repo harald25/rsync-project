@@ -112,8 +112,9 @@ def rsync_files(client, volume, lv_suffix, dataset):
     log_and_print(arguments.verbosity_level,"info", "lv_suffix = "+lv_suffix, backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "dataset = "+dataset, backupjob_log_file)
 
-    rsync_returncode = None
+    rsync_returncode = -1
     def run_rsync_and_yield(cmd):
+        nonlocal rsync_returncode
         rsync_process = subprocess.Popen(cmd,encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
         for stdout_line in iter(rsync_process.stdout.readline, ""):
             yield stdout_line
@@ -121,6 +122,7 @@ def rsync_files(client, volume, lv_suffix, dataset):
         rsync_returncode = rsync_process.wait()
 
     try:
+
         lv_name = volume.split("/")[3]
         lv_mount_path = client_snapshot_mount_path+"/"+lv_name+lv_suffix+"/" #We add a trailing slash to copy contents and not the directory itself
         lv_snapshot_name = volume+lv_suffix
@@ -133,7 +135,6 @@ def rsync_files(client, volume, lv_suffix, dataset):
             log_and_print(arguments.verbosity_level,"critical",str(new_dir.stderr),backupjob_log_file)
             return 1 # 1 = error
         else:
-
             log_and_print(arguments.verbosity_level,"info","New directory created successfully: "+backup_dest_dir, backupjob_log_file)
             log_and_print(arguments.verbosity_level,"info","Starting rsync", backupjob_log_file)
             rsync_start_time = time.time()
@@ -143,11 +144,14 @@ def rsync_files(client, volume, lv_suffix, dataset):
             log_and_print(arguments.verbosity_level,"info","Rsync finished executing in: "+str(rsync_execution_time)+" seconds", backupjob_log_file)
 
             if rsync_returncode == None:
-                log_and_print(arguments.verbosity_level,"critical",str("Unhandled error!"),backupjob_log_file)
+                log_and_print(arguments.verbosity_level,"critical","Process still running!",backupjob_log_file)
                 return 1 # 1 = error
             elif rsync_returncode == 0:
-                log_and_print(arguments.verbosity_level,"info",str("Rsync finished successfully"),backupjob_log_file)
+                log_and_print(arguments.verbosity_level,"info","Rsync finished successfully",backupjob_log_file)
                 return 0 # 0 = OK
+            elif rsync_returncode == -1:
+                log_and_print(arguments.verbosity_level,"critical","Unhandled error",backupjob_log_file)
+                return 1 # 1 = error
             else:
                 log_and_print(arguments.verbosity_level,"critical","Rsync exited with an error",backupjob_log_file)
                 return 1 # 1 = error
