@@ -4,7 +4,15 @@ import subprocess, os.path, paramiko, sys, argparse, time
 from datetime import datetime
 from paramiko import SSHClient
 from shared_functions import *
+from enum import Enum
 (EXIT_OK, EXIT_WARNING, EXIT_CRITICAL, EXIT_UNKNOWN) = (0,1,2,3)
+
+@unique
+class BackupStatus(Enum):
+    SUCCESSFUL = 0
+    WARNING = 1
+    FAILED = 2
+    RUNNING = 3
 
 arg_parser = argparse.ArgumentParser(description='Server side script that does the main execution of the backup job.')
 arg_parser.add_argument("volumes", nargs='*',help="Full path of all the logical volumes to back up")
@@ -414,7 +422,7 @@ def end_client(client, username,lv_path,lv_suffix):
 
 def check_last_backup_status(root_dataset_name):
     """
-    Checks the status from the last run of the bacup. Will return status and date of last
+    Checks the status from the last run of the backup. Will return status and date of last
     backup, date of last successful backup. If there are no last backups, or no successful
     backups, the return value will be None
     The status is checked by parsing /backup/jobname/status.txt
@@ -445,6 +453,41 @@ def check_last_backup_status(root_dataset_name):
     status.closed()
     return last_successful_date, last_backup_date, last_backup_status
 
+def write_backup_status(lv_suffix, dataset, status):
+    """
+    Writes backup status to status file. Takes three parameters, lv_suffix,
+    dataset, and status.
+    If no status has been recorded for the given lv_suffix, a new line is made.
+    If the date and time from the given lv_suffix matches the last line of the
+    status file, this line will be updated with the new status.
+    The status is written to /$dataset/status.txt
+
+    Parameters
+    ----------
+    dataset :       Name of the ZFS root dataset where the status file is located.
+                    Example: 'backup/job1'
+    lv_suffix:      The identifier for the backupjob. Will be used to add or
+                    update the status.
+    status:         The status to write in the status file. Must be one of the
+                    defined enum values: SUCCESSFUL, WARNING, FAILED, RUNNING
+
+    """
+
+    log_and_print(arguments.verbosity_level,"info", "write_backup_status function invoked with parameters:", backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "dataset = "+dataset, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "lv_suffix = "+lv_suffix, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "status = "+status, backupjob_log_file)
+
+    with open("/"+root_dataset_name+"/"+status+".txt", "r", encoding="utf-8") as status:
+        # Read all lines and find the last
+        # Check if date for lv_suffix matches the date of the last line in the status file
+        # If match, update status at this line
+        # If not match, add new line with status
+
+        # Maybe record the entire lv_suffix instead of just date+time?
+        # Maybe the statu should never be updated, but always appended?
+
+    status.closed()
 
 
 if __name__ == "__main__":
