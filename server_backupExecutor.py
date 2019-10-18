@@ -7,7 +7,6 @@ from shared_functions import *
 from enum import Enum
 (EXIT_OK, EXIT_WARNING, EXIT_CRITICAL, EXIT_UNKNOWN) = (0,1,2,3)
 
-@unique
 class BackupStatus(Enum):
     SUCCESSFUL = 0
     WARNING = 1
@@ -30,14 +29,17 @@ backupjob_log_file = "/"+arguments.dataset_name+"/"+time_now+"_"+arguments.backu
 main_log_file = "/backup/backupexecutor.log"
 client_snapshot_mount_path = "/mnt/rsyncbackup"
 ssh_user = "root"
+status_file_max_lines = 100
 
 def main():
     log_and_print(arguments.verbosity_level,"info", "Starting backupjob", main_log_file)
     log_and_print(arguments.verbosity_level,"info", str(arguments), main_log_file)
+    write_backup_status(lv_suffix, arguments.dataset_name, BackupStatus.RUNNING)
 
     #Check that the root dataset for the backup job exists.
     if not os.path.isdir("/"+arguments.dataset_name):
         log_and_print(arguments.verbosity_level,"critical", "Root dataset for backup job, "+arguments.dataset_name+" does not exist. Exiting!", main_log_file)
+        write_backup_status(lv_suffix, arguments.dataset_name, BackupStatus.FAILED)
         sys.exit(EXIT_CRITICAL)
 
     #Root dataset exists. Let's continue!
@@ -45,6 +47,7 @@ def main():
         #Check if there is a lock file present
         if check_lockfile(lock_file):
             log_and_print(arguments.verbosity_level,"warning", "Lock file is present. Exiting!", backupjob_log_file)
+            write_backup_status(lv_suffix, arguments.dataset_name, BackupStatus.FAILED)
             sys.exit(EXIT_WARNING)
         else:
             create_lockfile(lock_file)
@@ -54,6 +57,7 @@ def main():
         if returncode:
             log_and_print(arguments.verbosity_level,"critical", "Error while creating dataset", backupjob_log_file)
             delete_lockfile(lock_file)
+            write_backup_status(lv_suffix, arguments.dataset_name, BackupStatus.FAILED)
             sys.exit(EXIT_CRITICAL)
         else:
             log_and_print(arguments.verbosity_level,"info", "Dataset created", backupjob_log_file)
@@ -65,6 +69,7 @@ def main():
 
                 log_and_print(arguments.verbosity_level,"critical", "Error while initiating client", backupjob_log_file)
                 delete_lockfile(lock_file)
+                write_backup_status(lv_suffix, arguments.dataset_name, BackupStatus.FAILED)
                 sys.exit(EXIT_CRITICAL)
             else:
 
@@ -88,6 +93,7 @@ def main():
                         log_and_print(arguments.verbosity_level,"info","end_client successful for volume: "+volume+lv_suffix,backupjob_log_file)
                         log_and_print(arguments.verbosity_level,"info",str(ec_stdout),backupjob_log_file)
                     delete_lockfile(lock_file)
+                    write_backup_status(lv_suffix, arguments.dataset_name, BackupStatus.FAILED)
                     sys.exit(EXIT_CRITICAL)
                 else:
 
@@ -110,6 +116,7 @@ def main():
         log_and_print(arguments.verbosity_level,"info","BackupExecutor has run successfully! Exiting.",backupjob_log_file)
         log_and_print(arguments.verbosity_level,"info","BackupExecutor has run successfully! Exiting.",main_log_file)
         delete_lockfile(lock_file)
+        write_backup_status(lv_suffix, arguments.dataset_name, BackupStatus.SUCCESSFUL)
         sys.exit(EXIT_OK)
 
 
@@ -172,6 +179,7 @@ def rsync_files(client, volume, lv_suffix, dataset):
         log_and_print(arguments.verbosity_level,"critical", str(e), backupjob_log_file)
         end_client(client,ssh_user,volume,lv_suffix)
         delete_lockfile(lock_file)
+        write_backup_status(lv_suffix, arguments.dataset_name, BackupStatus.FAILED)
         sys.exit(EXIT_CRITICAL)
 
 
@@ -256,8 +264,8 @@ def create_dataset(root_dataset_name, backup_type):
                 return returncode,new_dataset_name
 
         else:
-            print ("You should not have been able to get here")
             log_and_print(arguments.verbosity_level,"critical", "Backup type does not have a valid value", backupjob_log_file)
+            write_backup_status(lv_suffix, arguments.dataset_name, BackupStatus.FAILED)
             sys.exit(EXIT_CRITICAL)
 
 def snap_and_clone_dataset(dataset_name,backup_type):
@@ -337,6 +345,7 @@ def initiate_client(client, username,lv_path,lv_suffix):
         log_and_print(arguments.verbosity_level,"critical", str(e),backupjob_log_file)
         delete_lockfile(lock_file)
         ssh.close()
+        write_backup_status(lv_suffix, arguments.dataset_name, BackupStatus.FAILED)
         sys.exit(EXIT_CRITICAL)
 
     try:
@@ -360,6 +369,7 @@ def initiate_client(client, username,lv_path,lv_suffix):
         log_and_print(arguments.verbosity_level,"critical", str(e), backupjob_log_file)
         ssh.close()
         delete_lockfile(lock_file)
+        write_backup_status(lv_suffix, arguments.dataset_name, BackupStatus.FAILED)
         sys.exit(EXIT_CRITICAL)
 
 
@@ -397,6 +407,7 @@ def end_client(client, username,lv_path,lv_suffix):
         log_and_print(arguments.verbosity_level,"critical", str(e),backupjob_log_file)
         delete_lockfile(lock_file)
         ssh.close()
+        write_backup_status(lv_suffix, arguments.dataset_name, BackupStatus.FAILED)
         sys.exit(EXIT_CRITICAL)
 
     try:
@@ -417,10 +428,11 @@ def end_client(client, username,lv_path,lv_suffix):
         log_and_print(arguments.verbosity_level,"critical", str(e), backupjob_log_file)
         ssh.close()
         delete_lockfile(lock_file)
+        write_backup_status(lv_suffix, arguments.dataset_name, BackupStatus.FAILED)
         sys.exit(EXIT_CRITICAL)
 
 
-def check_last_backup_status(root_dataset_name):
+def read_backup_status(root_dataset_name):
     """
     Checks the status from the last run of the backup. Will return status and date of last
     backup, date of last successful backup. If there are no last backups, or no successful
@@ -434,7 +446,7 @@ def check_last_backup_status(root_dataset_name):
 
     """
 
-    log_and_print(arguments.verbosity_level,"info", "check_last_backup_status function invoked with parameters:", backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "read_backup_status function invoked with parameters:", backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "root_dataset_name= "+root_dataset_name, backupjob_log_file)
 
     #status_history = []
@@ -453,41 +465,80 @@ def check_last_backup_status(root_dataset_name):
     status.closed()
     return last_successful_date, last_backup_date, last_backup_status
 
-def write_backup_status(lv_suffix, dataset, status):
+def write_backup_status(lv_suffix, root_dataset_name, status):
     """
     Writes backup status to status file. Takes three parameters, lv_suffix,
     dataset, and status.
     If no status has been recorded for the given lv_suffix, a new line is made.
     If the date and time from the given lv_suffix matches the last line of the
     status file, this line will be updated with the new status.
-    The status is written to /$dataset/status.txt
+    The status is written to file named status.txt located in the folder of the
+    provided dataset
+
+    Returns 0 if successful or 1 if not successful.
 
     Parameters
     ----------
-    dataset :       Name of the ZFS root dataset where the status file is located.
-                    Example: 'backup/job1'
+    root_dataset_name :     Name of the ZFS root dataset where the status file is located.
+                            Example: 'backup/job1'
     lv_suffix:      The identifier for the backupjob. Will be used to add or
                     update the status.
     status:         The status to write in the status file. Must be one of the
                     defined enum values: SUCCESSFUL, WARNING, FAILED, RUNNING
 
     """
-
     log_and_print(arguments.verbosity_level,"info", "write_backup_status function invoked with parameters:", backupjob_log_file)
-    log_and_print(arguments.verbosity_level,"info", "dataset = "+dataset, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "root_dataset_name = "+root_dataset_name, backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "lv_suffix = "+lv_suffix, backupjob_log_file)
-    log_and_print(arguments.verbosity_level,"info", "status = "+status, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "status = "+status.name, backupjob_log_file)
 
-    with open("/"+root_dataset_name+"/"+status+".txt", "r", encoding="utf-8") as status:
-        # Read all lines and find the last
-        # Check if date for lv_suffix matches the date of the last line in the status file
-        # If match, update status at this line
-        # If not match, add new line with status
+    t_now = datetime.today().strftime('%Y-%m-%dT%H-%M-%S')
+    status_list = []
+    status_file = "/"+root_dataset_name+"/status.txt"
 
-        # Maybe record the entire lv_suffix instead of just date+time?
-        # Maybe the statu should never be updated, but always appended?
+    try:
+        with open(status_file, "r", encoding="utf-8") as f:
+            status_list = f.readlines()
+        try:
+            last_backup = status_list[-1].split(",")
+            if last_backup[1] == lv_suffix:
+                log_and_print(arguments.verbosity_level,"info","lv_suffix found in status file. Updating corresponding status",backupjob_log_file)
+                last_backup[2] = status.name+"\n"
+                status_list[-1] = last_backup[0]+","+last_backup[1]+","+last_backup[2]
+            else:
+                status_list.append(str(t_now)+","+lv_suffix+","+status.name+"\n")
 
-    status.closed()
+        except IndexError as err:
+            log_and_print(arguments.verbosity_level,"info","Status file exists but is empty",backupjob_log_file)
+            status_list.append(str(t_now)+","+lv_suffix+","+status.name+"\n")
+
+    except FileNotFoundError as e:
+        log_and_print(arguments.verbosity_level,"info","No existing status file for this backup job. Creating a new",backupjob_log_file)
+        status_list.append(str(t_now)+","+lv_suffix+","+status.name+"\n")
+
+    except PermissionError as e:
+        log_and_print(arguments.verbosity_level,"critical","Unable to open status file:",backupjob_log_file)
+        log_and_print(arguments.verbosity_level,"critical",str(e),backupjob_log_file)
+        return 1 # 1 = failed
+
+    except Exception as e:
+        log_and_print(arguments.verbosity_level,"critical","Unhandled exception when reading from status file",backupjob_log_file)
+        log_and_print(arguments.verbosity_level,"critical",str(e),backupjob_log_file)
+        return 1 # 1 = failed
+
+    # If the status list is longer than status_file_max_lines, shorten it
+    if len(status_list) > status_file_max_lines:
+        status_list = status_list[-(status_file_max_lines+1):-1]
+    try:
+        with open(status_file, "w+", encoding="utf-8") as f:
+            f.writelines(status_list)
+    except Exception as e:
+        log_and_print(arguments.verbosity_level,"critical","Unhandled exception when reading from status file",backupjob_log_file)
+        log_and_print(arguments.verbosity_level,"critical",str(e),backupjob_log_file)
+        return 1 # 1 = failed
+
+    log_and_print(arguments.verbosity_level,"info","Backup status successfuly written to file",backupjob_log_file)
+    return 0 # 0 = OK
 
 
 if __name__ == "__main__":
