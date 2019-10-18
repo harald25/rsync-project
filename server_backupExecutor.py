@@ -189,6 +189,9 @@ def create_dataset(root_dataset_name, backup_type):
     This function creates a ZFS dataset.
     The function takes two parameters: root_dataset_name, and backup_type
     The root dataset for the backup job must already exist, or else this function will fail and exit.
+    The function checks what the status of the last backup job was if the current backup is an incremental,
+    or checks the status of the last full job if differential. If the returned status is not OK the current
+    job will be forced to be a full backup.
     The function returns a return code and the name of the new dataset.
     Return code = 0 = OK
     Return code = 1 = Fail
@@ -222,8 +225,52 @@ def create_dataset(root_dataset_name, backup_type):
         if not dataset_list:
             #If dataset_list is empty there are no previous backups, and we will force a full backup
 
-            log_and_print(arguments.verbosity_level,"info","No previous backups. backup_type forced to 'full'", backupjob_log_file)
+            log_and_print(arguments.verbosity_level,"info","No previous backups. Backup type forced to 'full'", backupjob_log_file)
             backup_type = "full"
+
+        if backup_type == "diff":
+            #Make a new list with only the full backups
+            dataset_list_full = []
+            for dataset in dataset_list:
+                bkp_type = dataset.split("_")
+                if bkp_type[-1] == "full":
+                    dataset_list_full.append(dataset)
+
+            dataset_list_full.sort()
+            last_full_backup = dataset_list_full[-1]
+
+            # Check status of last full backup from backupjob status file
+            lastfull_date = last_full_backup.split("/")[2]
+            lastfull_date = lastfull_date.split("_")[0]
+            lastfull_status = read_backup_status(root_dataset_name,lastfull_date)
+            if lastfull_status is BackupStatus.SUCCESSFUL:
+                returncode, new_dataset_name = snap_and_clone_dataset(last_full_backup,backup_type)
+                if returncode:
+                    log_and_print(arguments.verbosity_level,"critical", "Error while snapshoting and cloning dataset", backupjob_log_file)
+                    return returncode,""
+                else:
+                    log_and_print(arguments.verbosity_level,"info", "Snaphot and clone successful", backupjob_log_file)
+                    return returncode,new_dataset_name
+            else:
+                log_and_print(arguments.verbosity_level,"warning", "The status of last full backup was not successful", backupjob_log_file)
+                log_and_print(arguments.verbosity_level,"warning", "Forcing this to be a full backup", backupjob_log_file)
+                backup_type = "full"
+
+        elif backup_type == "inc":
+            lastbackup_status = read_backup_status(root_dataset_name)
+            if lastbackup_status is BackupStatus.SUCCESSFUL:
+                last_backup = dataset_list[-1]
+                returncode,new_dataset_name = snap_and_clone_dataset(last_backup,backup_type)
+                if returncode:
+                    log_and_print(arguments.verbosity_level,"critical", "Error while snapshoting and cloning dataset", backupjob_log_file)
+                    return returncode,""
+                else:
+                    log_and_print(arguments.verbosity_level,"info", "Snaphot and clone successful", backupjob_log_file)
+                    return returncode,new_dataset_name
+            else:
+                log_and_print(arguments.verbosity_level,"warning", "The status of last backup was not successful", backupjob_log_file)
+                log_and_print(arguments.verbosity_level,"warning", "Forcing this to be a full backup", backupjob_log_file)
+                backup_type = "full"
 
         if backup_type == "full":
             new_dataset_name = root_dataset_name +'/' + time_now + "_full"
@@ -234,39 +281,6 @@ def create_dataset(root_dataset_name, backup_type):
             else:
                 log_and_print(arguments.verbosity_level,"info", "New dataset created successfuly: " + new_dataset_name, backupjob_log_file)
                 return 0,new_dataset_name
-
-        elif backup_type == "diff":
-            #Make a new list with only the full backups
-            dataset_list_full = []
-            for dataset in dataset_list:
-                bkp_type = dataset.split("_")
-                if bkp_type[-1] == "full":
-                    dataset_list_full.append(dataset)
-
-            dataset_list_full.sort()
-            last_full_backup = dataset_list_full[-1]
-            returncode, new_dataset_name = snap_and_clone_dataset(last_full_backup,backup_type)
-            if returncode:
-                log_and_print(arguments.verbosity_level,"critical", "Error while snapshoting and cloning dataset", backupjob_log_file)
-                return returncode,""
-            else:
-                log_and_print(arguments.verbosity_level,"info", "Snaphot and clone successful", backupjob_log_file)
-                return returncode,new_dataset_name
-
-        elif backup_type == "inc":
-            last_backup = dataset_list[-1]
-            returncode,new_dataset_name = snap_and_clone_dataset(last_backup,backup_type)
-            if returncode:
-                log_and_print(arguments.verbosity_level,"critical", "Error while snapshoting and cloning dataset", backupjob_log_file)
-                return returncode,""
-            else:
-                log_and_print(arguments.verbosity_level,"info", "Snaphot and clone successful", backupjob_log_file)
-                return returncode,new_dataset_name
-
-        else:
-            log_and_print(arguments.verbosity_level,"critical", "Backup type does not have a valid value", backupjob_log_file)
-            write_backup_status(lv_suffix, arguments.dataset_name, BackupStatus.FAILED)
-            sys.exit(EXIT_CRITICAL)
 
 def snap_and_clone_dataset(dataset_name,backup_type):
     """
@@ -329,7 +343,7 @@ def initiate_client(client, username,lv_path,lv_suffix):
     """
 
     log_and_print(arguments.verbosity_level,"info", "initiate_client function invoked with parameters:", backupjob_log_file)
-    log_and_print(arguments.verbosity_level,"info", "client= "+client, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "client = "+client, backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "username = "+username, backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "lv_path = "+lv_path, backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "lv_suffix = "+lv_suffix, backupjob_log_file)
@@ -391,7 +405,7 @@ def end_client(client, username,lv_path,lv_suffix):
     """
 
     log_and_print(arguments.verbosity_level,"info", "end_client function invoked with parameters:", backupjob_log_file)
-    log_and_print(arguments.verbosity_level,"info", "client= "+client, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "client = "+client, backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "username = "+username, backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "lv_path = "+lv_path, backupjob_log_file)
     log_and_print(arguments.verbosity_level,"info", "lv_suffix = "+lv_suffix, backupjob_log_file)
@@ -432,38 +446,63 @@ def end_client(client, username,lv_path,lv_suffix):
         sys.exit(EXIT_CRITICAL)
 
 
-def read_backup_status(root_dataset_name):
+def read_backup_status(root_dataset_name, lv_suffix=None):
     """
-    Checks the status from the last run of the backup. Will return status and date of last
-    backup, date of last successful backup. If there are no last backups, or no successful
-    backups, the return value will be None
-    The status is checked by parsing /backup/jobname/status.txt
+    Checks the status from the last run of the backup, or if lv_suffix is provided will return status of
+    the job matching lv_suffix. If there are no last backup, or match for lv_suffix, the function returns None
+    The status is checked by parsing /%root_dataset_name%/status.txt
+    The returned status, unless it is None, will be of enum type BackupStatus
 
     Parameters
     ----------
     root_dataset_name :         Name of the ZFS root dataset for backupjob to check
                                 Example: 'backup/job1'
+    lv_suffix:                  Optional parameter.
+                                If specified the function will return the status of backup job with
+                                the specified lv_suffix
 
     """
 
     log_and_print(arguments.verbosity_level,"info", "read_backup_status function invoked with parameters:", backupjob_log_file)
-    log_and_print(arguments.verbosity_level,"info", "root_dataset_name= "+root_dataset_name, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "root_dataset_name = "+root_dataset_name, backupjob_log_file)
+    log_and_print(arguments.verbosity_level,"info", "lv_suffix= "+str(lv_suffix), backupjob_log_file)
 
-    #status_history = []
-    last_successful_date = None
-    last_backup_date = None
-    last_backup_status = None
+    status = None
+    status_file = "/"+root_dataset_name+"/status.txt"
+    # Split lv_suffix so we get only the date and time portion
+    #lv_suffix = lv_suffix.split("_")[2]
 
-    datetime_now = datetime.today().strftime('%Y-%m-%d-%H-%M-%S')
-    with open("/"+root_dataset_name+"/"+status+".txt", "r", encoding="utf-8") as status:
-        for line in status:
-            last_backup_status = status.split(",")[0]
-            last_backup_date = status.split(",")[1]
-            if status.split(",")[0] == "successful":
-                last_successful_date = status.split(",")[1]
+    try:
+        with open(status_file, "r", encoding="utf-8") as f:
+            status_list = f.readlines()
+        try:
+            if lv_suffix == None:
+                last_backup = status_list[-1]
+                last_backup = last_backup.rstrip().split(",")
+                status = BackupStatus[last_backup[2]]
+            else:
+                for backup_status in reversed(status_list):
+                    current_status = backup_status.rstrip().split(",")
+                    if current_status[1] == lv_suffix:
+                        status = BackupStatus[current_status[2]]
+                        break
+        except IndexError as err:
+            log_and_print(arguments.verbosity_level,"warning","Status file was empty",backupjob_log_file)
+            status = None
+    except FileNotFoundError as e:
+        log_and_print(arguments.verbosity_level,"warning","Status file not found for backupjob not found",backupjob_log_file)
+        log_and_print(arguments.verbosity_level,"warning",str(e),backupjob_log_file)
+        status = None
+    except PermissionError as e:
+        log_and_print(arguments.verbosity_level,"warning","Insufficient permissions to open status file for backupjob",backupjob_log_file)
+        log_and_print(arguments.verbosity_level,"warning",str(e),backupjob_log_file)
+        status = None
+    except Exception as e:
+        log_and_print(arguments.verbosity_level,"warning","Unhandled exception while reading backup status",backupjob_log_file)
+        log_and_print(arguments.verbosity_level,"warning",str(e),backupjob_log_file)
+        status = None
 
-    status.closed()
-    return last_successful_date, last_backup_date, last_backup_status
+    return status
 
 def write_backup_status(lv_suffix, root_dataset_name, status):
     """
@@ -495,6 +534,8 @@ def write_backup_status(lv_suffix, root_dataset_name, status):
     t_now = datetime.today().strftime('%Y-%m-%dT%H-%M-%S')
     status_list = []
     status_file = "/"+root_dataset_name+"/status.txt"
+    # Split lv_suffix so we get only the date and time portion
+    lv_suffix = lv_suffix.split("_")[2]
 
     try:
         with open(status_file, "r", encoding="utf-8") as f:
