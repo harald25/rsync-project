@@ -477,7 +477,8 @@ def read_backup_status(root_dataset_name, lv_suffix=None):
             status_list = f.readlines()
         try:
             if lv_suffix == None:
-                last_backup = status_list[-1]
+                # The last backup is the current, running backup. The second last is the previous backup
+                last_backup = status_list[-2]
                 last_backup = last_backup.rstrip().split(",")
                 status = BackupStatus[last_backup[2]]
             else:
